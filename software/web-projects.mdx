@@ -1,0 +1,511 @@
+---
+title: 'Web Projects'
+description: 'HTML/CSS web applications and static sites developed by Grupo de Anda'
+icon: 'globe'
+---
+
+## Overview
+
+A collection of web-based projects showcasing HTML, CSS, and JavaScript development. These projects demonstrate responsive design, modern styling, and clean UI/UX principles.
+
+<Note>
+**Location**: `~/workspace/source/proyectos/web insulatio/`  
+**Technologies**: HTML5, CSS3, Responsive Design  
+**Style**: Dark theme, modern gradients
+</Note>
+
+## Project: Closed Page Template
+
+A professionally designed "page closed" or "maintenance mode" template with modern styling and accessibility features.
+
+### Live Preview
+
+<Frame>
+  <div style={{background: '#cfcfcf', padding: '40px', borderRadius: '8px'}}>
+    <div style={{background: 'linear-gradient(180deg, rgba(58,58,58,0.98) 0%, rgba(48,48,48,0.98) 100%)', borderRadius: '12px', padding: '48px', textAlign: 'center', borderTop: '6px solid #d32f2f'}}>
+      <h1 style={{color: 'white', fontSize: '36px', margin: '0 0 18px 0'}}>Página cerrada</h1>
+      <p style={{color: 'white', fontSize: '18px', margin: '0 0 28px 0'}}>Lo sentimos, esta página ya no está disponible.</p>
+    </div>
+  </div>
+</Frame>
+
+## HTML Structure
+
+### Document Setup
+
+```html
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Página cerrada</title>
+    <!-- Inline CSS styles -->
+  </head>
+  <body>
+    <!-- Content -->
+  </body>
+</html>
+```
+
+### CSS Variables
+
+The template uses CSS custom properties for easy theming:
+
+```css
+:root {
+  --bg: #cfcfcf;      /* Page background - light gray */
+  --card: #3a3a3a;    /* Card background - dark gray */
+  --text: #ffffff;    /* Text color - white */
+  --accent: #d32f2f;  /* Accent color - red */
+}
+```
+
+## Styling System
+
+### Layout Components
+
+<Tabs>
+  <Tab title="Container">
+    ```css
+    .wrap {
+      min-height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+    ```
+    
+    Creates a full-height flexbox container that centers content vertically and horizontally.
+  </Tab>
+  
+  <Tab title="Card">
+    ```css
+    .card {
+      width: 100%;
+      max-width: 820px;
+      background: linear-gradient(180deg, 
+                  rgba(58,58,58,0.98) 0%, 
+                  rgba(48,48,48,0.98) 100%);
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+      padding: 48px;
+      box-sizing: border-box;
+      text-align: center;
+      border-top: 6px solid var(--accent);
+    }
+    ```
+    
+    Styled card with gradient background, shadow, and accent border.
+  </Tab>
+  
+  <Tab title="Typography">
+    ```css
+    h1 {
+      margin: 0 0 18px 0;
+      font-size: 36px;
+      letter-spacing: 0.6px;
+      color: var(--text);
+    }
+
+    p.lead {
+      margin: 0 0 28px 0;
+      font-size: 18px;
+      color: var(--text);
+      opacity: 0.95;
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Responsive Design
+
+```css
+@media (max-width: 520px) {
+  .card { 
+    padding: 28px;  /* Reduced padding on mobile */
+  }
+  h1 { 
+    font-size: 28px;  /* Smaller heading on mobile */
+  }
+}
+```
+
+<Info>
+**Breakpoint**: 520px for mobile optimization
+</Info>
+
+## Content Sections
+
+### Main Message
+
+```html
+<div class="card" role="main" aria-labelledby="title">
+  <h1 id="title">Página cerrada</h1>
+  <p class="lead">Lo sentimos, esta página ya no está disponible.</p>
+  
+  <div class="below" aria-label="Información adicional">
+    <span class="reason">
+      <strong>Motivo:</strong> falta de manteniento y mal funcionamiento
+    </span>
+    <p>es pocible que la pagina regrese pero solo por peticion de el asociado</p>
+    <span class="signature">
+      <strong>Att:</strong> Daniel 
+    </span>
+  </div>
+</div>
+```
+
+### Additional Info Section
+
+```css
+.below {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px dashed rgba(255,255,255,0.08);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.reason {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.signature {
+  font-weight: 600;
+  color: var(--text);
+}
+```
+
+### Link Styling
+
+```css
+a.url {
+  display: inline-block;
+  margin-top: 8px;
+  text-decoration: none;
+  color: var(--accent);
+  background: rgba(211,47,47,0.07);
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(211,47,47,0.15);
+  font-family: monospace;
+}
+```
+
+<Tip>
+Link styling uses accent color with subtle background and border for a button-like appearance.
+</Tip>
+
+## Accessibility Features
+
+### ARIA Labels
+
+```html
+<!-- Main content role -->
+<div class="card" role="main" aria-labelledby="title">
+  <h1 id="title">Página cerrada</h1>
+  
+  <!-- Descriptive labels for screen readers -->
+  <div class="below" aria-label="Información adicional">
+    <!-- Content -->
+  </div>
+</div>
+```
+
+### Semantic HTML
+
+<CardGroup cols={2}>
+  <Card title="Proper Headings" icon="heading">
+    Uses `<h1>` for main title, properly associated with ARIA labelledby
+  </Card>
+  <Card title="Meta Viewport" icon="mobile">
+    Ensures proper scaling on mobile devices
+  </Card>
+  <Card title="Lang Attribute" icon="language">
+    `lang="es"` declares Spanish language for screen readers
+  </Card>
+  <Card title="Semantic Tags" icon="code">
+    Uses `<strong>`, `<span>`, proper paragraph structure
+  </Card>
+</CardGroup>
+
+## Color Palette
+
+<Tabs>
+  <Tab title="Neutral Colors">
+    | Color | Hex | Usage |
+    |-------|-----|-------|
+    | Light Gray | `#cfcfcf` | Page background |
+    | Dark Gray 1 | `#3a3a3a` | Card start gradient |
+    | Dark Gray 2 | `#303030` | Card end gradient |
+    | White | `#ffffff` | Text color |
+  </Tab>
+  
+  <Tab title="Accent Colors">
+    | Color | Hex | Usage |
+    |-------|-----|-------|
+    | Red | `#d32f2f` | Accent, borders, links |
+    | Red Alpha | `rgba(211,47,47,0.07)` | Link backgrounds |
+    | Red Border | `rgba(211,47,47,0.15)` | Link borders |
+  </Tab>
+  
+  <Tab title="Effects">
+    | Effect | Value | Usage |
+    |--------|-------|-------|
+    | Text Opacity | `0.95` | Lead paragraph |
+    | Shadow | `0 12px 30px rgba(0,0,0,0.25)` | Card elevation |
+    | Gradient | `180deg, rgba(58,58,58,0.98) → rgba(48,48,48,0.98)` | Card background |
+  </Tab>
+</Tabs>
+
+## Typography
+
+### Font Stack
+
+```css
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, 
+             "Helvetica Neue", Arial;
+```
+
+<Info>
+System font stack prioritizes native OS fonts for optimal rendering and performance.
+</Info>
+
+### Font Settings
+
+```css
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+```
+
+Enables font smoothing for better rendering on all platforms.
+
+## Customization Guide
+
+### Changing Color Scheme
+
+<CodeGroup>
+```css Blue Theme
+:root {
+  --bg: #e3f2fd;      /* Light blue */
+  --card: #1565c0;    /* Dark blue */
+  --text: #ffffff;
+  --accent: #ff6f00;  /* Orange accent */
+}
+```
+
+```css Green Theme
+:root {
+  --bg: #e8f5e9;      /* Light green */
+  --card: #2e7d32;    /* Dark green */
+  --text: #ffffff;
+  --accent: #fdd835;  /* Yellow accent */
+}
+```
+
+```css Purple Theme
+:root {
+  --bg: #f3e5f5;      /* Light purple */
+  --card: #6a1b9a;    /* Dark purple */
+  --text: #ffffff;
+  --accent: #00bfa5;  /* Teal accent */
+}
+```
+</CodeGroup>
+
+### Modifying Layout
+
+<Steps>
+  <Step title="Change Card Width">
+    ```css
+    .card {
+      max-width: 1000px;  /* From 820px to 1000px */
+    }
+    ```
+  </Step>
+  
+  <Step title="Adjust Padding">
+    ```css
+    .card {
+      padding: 60px;  /* From 48px to 60px */
+    }
+    ```
+  </Step>
+  
+  <Step title="Modify Border">
+    ```css
+    .card {
+      border-top: 8px solid var(--accent);  /* Thicker border */
+      border-radius: 16px;                   /* More rounded */
+    }
+    ```
+  </Step>
+</Steps>
+
+### Adding Content
+
+```html
+<!-- Add contact information -->
+<div class="below" aria-label="Información adicional">
+  <span class="reason">
+    <strong>Motivo:</strong> Mantenimiento programado
+  </span>
+  
+  <!-- New section -->
+  <div style="margin-top: 20px;">
+    <strong>Contacto:</strong><br>
+    Email: soporte@example.com<br>
+    Teléfono: +52 123 456 7890
+  </div>
+  
+  <span class="signature">
+    <strong>Att:</strong> Equipo Técnico
+  </span>
+</div>
+```
+
+## Additional Web Files
+
+The project includes multiple HTML files:
+
+### index.html
+- Main closed page template (114 lines)
+- Production-ready
+- Fully styled with inline CSS
+
+### index2.html
+- Alternative version (details not provided)
+- Likely contains different content or styling variations
+
+### Assets
+
+```
+web insulatio/
+├── index.html       # Main template (2,990 bytes)
+├── index2.html      # Alternative page (5,285 bytes)
+├── imagen1.webp     # WebP image (31,166 bytes)
+├── imagen2.jpg      # JPEG image (7,070 bytes)
+└── logo.jpg         # Logo (26,496 bytes)
+```
+
+## Best Practices Implemented
+
+<CardGroup cols={2}>
+  <Card title="Performance" icon="gauge">
+    - Inline CSS (no external requests)
+    - System fonts (no web font downloads)
+    - Minimal DOM structure
+    - Optimized images (WebP format)
+  </Card>
+  
+  <Card title="Accessibility" icon="universal-access">
+    - Semantic HTML5
+    - ARIA labels
+    - Proper heading hierarchy
+    - Sufficient color contrast
+  </Card>
+  
+  <Card title="Responsive" icon="mobile">
+    - Mobile-first viewport meta
+    - Fluid typography
+    - Flexible layouts
+    - Media query breakpoints
+  </Card>
+  
+  <Card title="Maintainability" icon="wrench">
+    - CSS custom properties
+    - BEM-like naming
+    - Clear structure
+    - Commented sections
+  </Card>
+</CardGroup>
+
+## Usage Scenarios
+
+<Tabs>
+  <Tab title="Maintenance Mode">
+    ```html
+    <h1>Sitio en Mantenimiento</h1>
+    <p class="lead">Estamos mejorando nuestro sitio para ti.</p>
+    <div class="below">
+      <span class="reason">
+        <strong>Tiempo estimado:</strong> 2-3 horas
+      </span>
+      <p>Volveremos pronto con mejoras increíbles.</p>
+    </div>
+    ```
+  </Tab>
+  
+  <Tab title="Coming Soon">
+    ```html
+    <h1>Próximamente</h1>
+    <p class="lead">Algo emocionante está por llegar.</p>
+    <div class="below">
+      <span class="reason">
+        <strong>Lanzamiento:</strong> Diciembre 2026
+      </span>
+      <p>Suscríbete para recibir notificaciones.</p>
+    </div>
+    ```
+  </Tab>
+  
+  <Tab title="404 Error">
+    ```html
+    <h1>Página No Encontrada</h1>
+    <p class="lead">La página que buscas no existe.</p>
+    <div class="below">
+      <span class="reason">
+        <strong>Error:</strong> 404
+      </span>
+      <p>Verifica la URL o regresa al inicio.</p>
+      <a href="/" class="url">Ir al Inicio</a>
+    </div>
+    ```
+  </Tab>
+</Tabs>
+
+## Browser Compatibility
+
+| Feature | Chrome | Firefox | Safari | Edge |
+|---------|--------|---------|--------|------|
+| CSS Variables | ✅ 49+ | ✅ 31+ | ✅ 9.1+ | ✅ 15+ |
+| Flexbox | ✅ 29+ | ✅ 28+ | ✅ 9+ | ✅ 12+ |
+| Gradients | ✅ 26+ | ✅ 16+ | ✅ 6.1+ | ✅ 12+ |
+| Media Queries | ✅ All | ✅ All | ✅ All | ✅ All |
+
+<Success>
+**Full Support**: All modern browsers (last 5 years)
+</Success>
+
+## File Reference
+
+**Main File**: `/home/daytona/workspace/source/proyectos/web insulatio/index.html:1`  
+**Lines**: 114  
+**Size**: 2,990 bytes  
+**Format**: HTML5 with inline CSS
+
+## Related Projects
+
+<CardGroup cols={2}>
+  <Card title="miPOS System" icon="cash-register" href="./mipos-system">
+    Desktop POS application with Tkinter GUI
+  </Card>
+  <Card title="AI Voice Assistant" icon="microphone" href="./ai-assistant">
+    Voice-controlled smart assistant
+  </Card>
+</CardGroup>
+
+## Development Notes
+
+<Warning>
+**Creator**: Daniel (Daniel Tecnologi)  
+**Purpose**: Template for closed/maintenance pages  
+**Status**: Production-ready, fully functional  
+**License**: Open source educational project
+</Warning>

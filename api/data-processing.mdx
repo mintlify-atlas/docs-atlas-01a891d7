@@ -1,0 +1,889 @@
+---
+title: Data Processing
+description: Audio processing, MFCC feature extraction, TF-IDF vectorization, and data preparation utilities
+icon: waveform-lines
+---
+
+## Overview
+
+Data processing utilities for audio analysis, feature extraction, and text vectorization:
+
+- **Audio Processing** - Recording, loading, and preprocessing audio data
+- **MFCC Features** - Mel-Frequency Cepstral Coefficients extraction
+- **TF-IDF Vectorization** - Text feature extraction for NLP
+- **Dataset Preparation** - Loading and validating training data
+
+---
+
+## Audio Processing
+
+### Configuration
+
+Standard audio parameters used across the system.
+
+```python Audio Parameters
+# Core Settings
+SAMPLE_RATE = 16000   # 16 kHz (standard for speech)
+DURATION = 5          # Audio clip length in seconds
+CHANNELS = 1          # Mono audio
+
+# File Paths
+BASE_PATH = "/path/to/project"
+PATH_POSITIVE = os.path.join(BASE_PATH, "audios")
+PATH_NEGATIVE = os.path.join(BASE_PATH, "audios bad")
+MODEL_SAVE_PATH = os.path.join(BASE_PATH, "wake_word_model.h5")
+```
+
+### Recording Audio
+
+Capture live audio using sounddevice.
+
+<CodeGroup>
+```python Real-time Recording
+import sounddevice as sd
+import numpy as np
+
+# Record audio
+recording = sd.rec(
+    int(DURATION * SAMPLE_RATE),  # Total frames
+    samplerate=SAMPLE_RATE,        # Sample rate (Hz)
+    channels=CHANNELS               # Mono
+)
+sd.wait()  # Wait until recording is finished
+
+# Convert to 1D array
+audio_data = recording.flatten()
+print(f"Recorded {len(audio_data)} samples")
+print(f"Duration: {len(audio_data) / SAMPLE_RATE:.2f} seconds")
+```
+
+```python Continuous Recording Loop
+import sounddevice as sd
+
+def audio_stream_callback(indata, frames, time, status):
+    """Called for each audio block"""
+    if status:
+        print(f"Status: {status}")
+    
+    audio_chunk = indata.flatten()
+    # Process audio_chunk here
+    process_audio(audio_chunk)
+
+# Start continuous stream
+with sd.InputStream(
+    callback=audio_stream_callback,
+    channels=CHANNELS,
+    samplerate=SAMPLE_RATE
+):
+    print("Recording... Press Ctrl+C to stop")
+    while True:
+        sd.sleep(100)
+```
+</CodeGroup>
+
+<ParamField path="frames" type="int" required>
+  Number of audio frames to record (sample_rate × duration)
+</ParamField>
+
+<ParamField path="samplerate" type="int" default={16000}>
+  Audio sampling rate in Hz (16000 recommended for speech)
+</ParamField>
+
+<ParamField path="channels" type="int" default={1}>
+  Number of audio channels (1 for mono, 2 for stereo)
+</ParamField>
+
+### Loading Audio Files
+
+Load audio files using librosa with automatic resampling.
+
+<CodeGroup>
+```python Basic Loading
+import librosa
+
+# Load audio file
+audio, sr = librosa.load(
+    'audio_file.wav',
+    sr=SAMPLE_RATE,      # Resample to target rate
+    duration=DURATION     # Load only first N seconds
+)
+
+print(f"Audio shape: {audio.shape}")
+print(f"Sample rate: {sr} Hz")
+print(f"Duration: {len(audio) / sr:.2f} seconds")
+```
+
+```python Batch Loading
+import os
+import librosa
+import numpy as np
+
+def load_audio_dataset(directory, label, sample_rate=16000, duration=5):
+    """Load all WAV files from directory"""
+    audio_data = []
+    labels = []
+    
+    for filename in os.listdir(directory):
+        if filename.endswith('.wav'):
+            filepath = os.path.join(directory, filename)
+            try:
+                audio, _ = librosa.load(
+                    filepath,
+                    sr=sample_rate,
+                    duration=duration
+                )
+                audio_data.append(audio)
+                labels.append(label)
+            except Exception as e:
+                print(f"Error loading {filename}: {e}")
+    
+    return np.array(audio_data), np.array(labels)
+
+# Load positive and negative samples
+X_pos, y_pos = load_audio_dataset('audios', label=1)
+X_neg, y_neg = load_audio_dataset('audios bad', label=0)
+
+print(f"Positive samples: {len(X_pos)}")
+print(f"Negative samples: {len(X_neg)}")
+```
+</CodeGroup>
+
+<ParamField path="path" type="string" required>
+  Path to audio file (.wav, .mp3, .flac, etc.)
+</ParamField>
+
+<ParamField path="sr" type="int" default={22050}>
+  Target sampling rate (resamples if different from source)
+</ParamField>
+
+<ParamField path="duration" type="float" optional>
+  Maximum duration to load in seconds (loads entire file if None)
+</ParamField>
+
+<ResponseField name="audio" type="numpy.ndarray">
+  Audio time series as 1D array
+</ResponseField>
+
+<ResponseField name="sr" type="int">
+  Actual sampling rate of loaded audio
+</ResponseField>
+
+---
+
+## MFCC Feature Extraction
+
+Mel-Frequency Cepstral Coefficients (MFCCs) are the primary audio features used for machine learning.
+
+### extract_features()
+
+Extracts MFCC features with automatic length normalization.
+
+<ParamField path="audio_data" type="numpy.ndarray" required>
+  Raw audio signal as 1D numpy array
+</ParamField>
+
+<ResponseField name="mfcc" type="numpy.ndarray">
+  MFCC feature matrix with shape `(time_steps, n_mfcc)`
+  - Automatically normalized to fixed length
+  - Transposed for LSTM input format
+</ResponseField>
+
+<CodeGroup>
+```python Basic Usage
+import librosa
+import numpy as np
+
+def extract_features(audio_data, sample_rate=16000, duration=5, n_mfcc=13):
+    """Extract MFCC features from audio."""
+    # Normalize audio length
+    target_len = int(sample_rate * duration)
+    
+    if len(audio_data) < target_len:
+        # Pad with zeros if too short
+        audio_data = np.pad(audio_data, (0, target_len - len(audio_data)))
+    else:
+        # Truncate if too long
+        audio_data = audio_data[:target_len]
+    
+    # Extract MFCCs
+    mfcc = librosa.feature.mfcc(
+        y=audio_data,
+        sr=sample_rate,
+        n_mfcc=n_mfcc
+    )
+    
+    return mfcc.T  # Transpose to (time_steps, n_mfcc)
+
+# Example
+audio, sr = librosa.load('sample.wav', sr=16000)
+features = extract_features(audio)
+print(f"Feature shape: {features.shape}")  # (time_steps, 13)
+```
+
+```python Advanced Configuration
+import librosa
+
+def extract_mfcc_advanced(
+    audio_data,
+    sample_rate=16000,
+    n_mfcc=13,
+    n_fft=2048,        # FFT window size
+    hop_length=512,    # Hop length between frames
+    n_mels=128         # Number of Mel bands
+):
+    """Extract MFCCs with custom parameters."""
+    mfcc = librosa.feature.mfcc(
+        y=audio_data,
+        sr=sample_rate,
+        n_mfcc=n_mfcc,
+        n_fft=n_fft,
+        hop_length=hop_length,
+        n_mels=n_mels
+    )
+    
+    # Apply delta features (velocity)
+    mfcc_delta = librosa.feature.delta(mfcc)
+    
+    # Apply delta-delta features (acceleration)
+    mfcc_delta2 = librosa.feature.delta(mfcc, order=2)
+    
+    # Stack all features
+    features = np.vstack([mfcc, mfcc_delta, mfcc_delta2])
+    
+    return features.T
+
+# Example with delta features
+audio, sr = librosa.load('sample.wav', sr=16000)
+features = extract_mfcc_advanced(audio)
+print(f"Feature shape: {features.shape}")  # (time_steps, 39)
+```
+</CodeGroup>
+
+**Parameters:**
+
+<ParamField path="n_mfcc" type="int" default={13}>
+  Number of MFCC coefficients to extract (13 is standard)
+</ParamField>
+
+<ParamField path="n_fft" type="int" default={2048}>
+  FFT window size for spectral analysis
+</ParamField>
+
+<ParamField path="hop_length" type="int" default={512}>
+  Number of samples between successive frames
+</ParamField>
+
+### Visualization
+
+Visualize MFCC features for analysis and debugging.
+
+<CodeGroup>
+```python Plot MFCCs
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
+import numpy as np
+
+# Load and extract features
+audio, sr = librosa.load('sample.wav', sr=16000)
+mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
+
+# Create visualization
+plt.figure(figsize=(12, 6))
+librosa.display.specshow(
+    mfcc,
+    x_axis='time',
+    sr=sr,
+    hop_length=512
+)
+plt.colorbar(format='%+2.0f dB')
+plt.title('MFCC Features')
+plt.xlabel('Time')
+plt.ylabel('MFCC Coefficient')
+plt.tight_layout()
+plt.savefig('mfcc_visualization.png')
+```
+
+```python Compare Audio Samples
+import librosa
+import matplotlib.pyplot as plt
+
+# Load two audio files
+audio1, sr = librosa.load('wake_word.wav', sr=16000)
+audio2, sr = librosa.load('background.wav', sr=16000)
+
+# Extract features
+mfcc1 = librosa.feature.mfcc(y=audio1, sr=sr)
+mfcc2 = librosa.feature.mfcc(y=audio2, sr=sr)
+
+# Plot comparison
+fig, axes = plt.subplots(2, 1, figsize=(12, 8))
+
+librosa.display.specshow(mfcc1, ax=axes[0], x_axis='time', sr=sr)
+axes[0].set_title('Wake Word MFCCs')
+axes[0].set_ylabel('MFCC')
+
+librosa.display.specshow(mfcc2, ax=axes[1], x_axis='time', sr=sr)
+axes[1].set_title('Background Audio MFCCs')
+axes[1].set_ylabel('MFCC')
+
+plt.tight_layout()
+plt.savefig('mfcc_comparison.png')
+```
+</CodeGroup>
+
+---
+
+## Dataset Preparation
+
+### prepare_dataset()
+
+Loads and prepares complete training dataset from audio files.
+
+<ResponseField name="return" type="tuple">
+  Returns `(X: np.ndarray, y: np.ndarray)`
+  - `X`: Feature arrays, shape `(n_samples, time_steps, n_mfcc)`
+  - `y`: Binary labels (1 for positive, 0 for negative)
+</ResponseField>
+
+<CodeGroup>
+```python Implementation
+import os
+import numpy as np
+import librosa
+
+def prepare_dataset(
+    path_positive='audios',
+    path_negative='audios bad',
+    sample_rate=16000,
+    duration=5,
+    n_mfcc=13
+):
+    """Prepare dataset from audio files."""
+    X = []
+    y = []
+    
+    # Process positive samples (wake word)
+    for path, label in [(path_positive, 1), (path_negative, 0)]:
+        print(f"Loading {'positive' if label == 1 else 'negative'} samples...")
+        
+        if not os.path.exists(path):
+            print(f"Warning: {path} does not exist")
+            continue
+        
+        for filename in os.listdir(path):
+            if filename.endswith('.wav'):
+                filepath = os.path.join(path, filename)
+                
+                try:
+                    # Load audio
+                    audio, _ = librosa.load(
+                        filepath,
+                        sr=sample_rate,
+                        duration=duration
+                    )
+                    
+                    # Extract features
+                    features = extract_features(audio)
+                    
+                    X.append(features)
+                    y.append(label)
+                    
+                except Exception as e:
+                    print(f"Error processing {filename}: {e}")
+    
+    return np.array(X), np.array(y)
+
+# Usage
+X_train, y_train = prepare_dataset()
+print(f"Dataset shape: {X_train.shape}")
+print(f"Labels: {np.unique(y_train, return_counts=True)}")
+```
+
+```python With Data Augmentation
+import numpy as np
+import librosa
+
+def augment_audio(audio, sample_rate):
+    """Apply data augmentation techniques."""
+    augmented = []
+    
+    # Original
+    augmented.append(audio)
+    
+    # Time stretch
+    stretched = librosa.effects.time_stretch(audio, rate=1.1)
+    augmented.append(stretched)
+    
+    # Pitch shift
+    pitched = librosa.effects.pitch_shift(
+        audio,
+        sr=sample_rate,
+        n_steps=2
+    )
+    augmented.append(pitched)
+    
+    # Add noise
+    noise = np.random.randn(len(audio)) * 0.005
+    noisy = audio + noise
+    augmented.append(noisy)
+    
+    return augmented
+
+def prepare_augmented_dataset():
+    """Prepare dataset with augmentation."""
+    X, y = [], []
+    
+    for path, label in [('audios', 1), ('audios bad', 0)]:
+        for filename in os.listdir(path):
+            if filename.endswith('.wav'):
+                filepath = os.path.join(path, filename)
+                audio, sr = librosa.load(filepath, sr=16000)
+                
+                # Generate augmented versions
+                augmented_audios = augment_audio(audio, sr)
+                
+                for aug_audio in augmented_audios:
+                    features = extract_features(aug_audio)
+                    X.append(features)
+                    y.append(label)
+    
+    return np.array(X), np.array(y)
+```
+</CodeGroup>
+
+**Directory Structure:**
+```
+project/
+├── audios/              # Positive samples
+│   ├── wake_word_01.wav
+│   ├── wake_word_02.wav
+│   └── ...
+├── audios bad/          # Negative samples
+│   ├── background_01.wav
+│   ├── other_speech_01.wav
+│   └── ...
+└── wake_word_model.h5   # Trained model
+```
+
+---
+
+## TF-IDF Vectorization
+
+Text feature extraction for intent classification.
+
+### TfidfVectorizer Configuration
+
+Configuration used in the intent classification pipeline.
+
+<CodeGroup>
+```python Standard Configuration
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+vectorizer = TfidfVectorizer(
+    ngram_range=(1, 2),    # Use unigrams and bigrams
+    lowercase=True,         # Convert text to lowercase
+    stop_words=None,        # Keep all words (Spanish)
+    max_features=None,      # No feature limit
+    min_df=1,              # Minimum document frequency
+    max_df=1.0             # Maximum document frequency
+)
+
+# Fit on training data
+texts = [
+    "abre netflix",
+    "busca videos de gatos",
+    "apaga la televisión"
+]
+vectorizer.fit(texts)
+
+# Transform new text
+features = vectorizer.transform(["abre youtube"])
+print(f"Feature shape: {features.shape}")
+print(f"Vocabulary size: {len(vectorizer.vocabulary_)}")
+```
+
+```python Advanced Configuration
+from sklearn.feature_extraction.text import TfidfVectorizer
+import re
+
+def spanish_tokenizer(text):
+    """Custom tokenizer for Spanish text."""
+    text = text.lower()
+    text = re.sub(r'[^\w\sáéíóúñü]', '', text)
+    tokens = text.split()
+    return tokens
+
+vectorizer = TfidfVectorizer(
+    tokenizer=spanish_tokenizer,
+    ngram_range=(1, 3),        # Unigrams, bigrams, trigrams
+    max_features=5000,         # Limit vocabulary size
+    min_df=2,                  # Ignore rare terms
+    max_df=0.8,                # Ignore common terms
+    sublinear_tf=True,         # Apply sublinear tf scaling
+    use_idf=True,              # Enable IDF weighting
+    smooth_idf=True            # Smooth IDF weights
+)
+```
+</CodeGroup>
+
+<ParamField path="ngram_range" type="tuple" default="(1, 2)">
+  Range of n-gram sizes. `(1, 2)` uses unigrams and bigrams
+</ParamField>
+
+<ParamField path="lowercase" type="bool" default={true}>
+  Convert all text to lowercase before tokenization
+</ParamField>
+
+<ParamField path="max_features" type="int" optional>
+  Maximum number of features (vocabulary size). None means unlimited
+</ParamField>
+
+<ParamField path="min_df" type="int|float" default={1}>
+  Minimum document frequency. Ignore terms below this threshold
+</ParamField>
+
+### Feature Analysis
+
+Analyze TF-IDF features and vocabulary.
+
+<CodeGroup>
+```python Inspect Vocabulary
+from sklearn.feature_extraction.text import TfidfVectorizer
+import pandas as pd
+
+# Create and fit vectorizer
+vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+texts = [
+    "abre netflix",
+    "busca videos en youtube",
+    "apaga la televisión"
+]
+vectorizer.fit(texts)
+
+# Get vocabulary
+vocab = vectorizer.vocabulary_
+print(f"Vocabulary size: {len(vocab)}")
+print("\nTop 10 features:")
+for term, idx in sorted(vocab.items(), key=lambda x: x[1])[:10]:
+    print(f"  {term}: {idx}")
+
+# Get IDF values
+idf_values = vectorizer.idf_
+feature_names = vectorizer.get_feature_names_out()
+
+idf_df = pd.DataFrame({
+    'feature': feature_names,
+    'idf': idf_values
+}).sort_values('idf', ascending=False)
+
+print("\nTop 10 IDF scores:")
+print(idf_df.head(10))
+```
+
+```python Feature Importance
+from sklearn.feature_extraction.text import TfidfVectorizer
+import numpy as np
+
+def get_top_features(vectorizer, text, n=10):
+    """Get top N features for given text."""
+    # Transform text
+    features = vectorizer.transform([text])
+    
+    # Get feature names and scores
+    feature_names = vectorizer.get_feature_names_out()
+    scores = features.toarray()[0]
+    
+    # Get top indices
+    top_indices = np.argsort(scores)[::-1][:n]
+    
+    # Return top features
+    return [
+        (feature_names[i], scores[i])
+        for i in top_indices
+        if scores[i] > 0
+    ]
+
+# Example
+vectorizer = TfidfVectorizer(ngram_range=(1, 2))
+texts = ["abre netflix", "busca videos", "apaga tv"]
+vectorizer.fit(texts)
+
+test_text = "abre netflix por favor"
+top_features = get_top_features(vectorizer, test_text)
+
+print(f"Top features for: '{test_text}'")
+for feature, score in top_features:
+    print(f"  {feature}: {score:.4f}")
+```
+</CodeGroup>
+
+---
+
+## Text Processing
+
+### JSON Dataset Loading
+
+Load and validate intent classification datasets.
+
+<CodeGroup>
+```python Basic Loading
+import json
+import sys
+
+def cargar_datos(ruta_archivo):
+    """Load dataset from JSON file."""
+    try:
+        with open(ruta_archivo, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data
+    except FileNotFoundError:
+        print(f"Error: File not found at {ruta_archivo}")
+        sys.exit(1)
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON format")
+        sys.exit(1)
+
+# Usage
+data = cargar_datos('dataset.json')
+print(f"Loaded {len(data)} examples")
+```
+
+```python With Validation
+import json
+
+def load_and_validate_dataset(filepath):
+    """Load dataset with validation."""
+    with open(filepath, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    
+    # Validate entries
+    valid_data = []
+    for i, item in enumerate(data):
+        if 'text' in item and 'intent' in item:
+            valid_data.append(item)
+        else:
+            print(f"Warning: Item {i} missing 'text' or 'intent'")
+    
+    if not valid_data:
+        raise ValueError("No valid data found in dataset")
+    
+    # Extract texts and intents
+    texts = [item['text'] for item in valid_data]
+    intents = [item['intent'] for item in valid_data]
+    
+    return texts, intents, valid_data
+
+# Usage
+texts, intents, data = load_and_validate_dataset('dataset.json')
+print(f"Valid examples: {len(texts)}")
+print(f"Unique intents: {set(intents)}")
+```
+</CodeGroup>
+
+**Dataset Format:**
+```json
+[
+  {
+    "text": "abre netflix",
+    "intent": "open_app"
+  },
+  {
+    "text": "pon música",
+    "intent": "play_media"
+  },
+  {
+    "text": "apaga la televisión",
+    "intent": "power_off"
+  }
+]
+```
+
+### Text Cleaning
+
+Clean and normalize text for audio and display.
+
+<CodeGroup>
+```python Audio Text Cleaning
+import re
+
+def limpiar_texto_para_audio(texto):
+    """Clean text for text-to-speech."""
+    # Remove command tags
+    texto = re.sub(r'/\*.*?\*/', '', texto)
+    
+    # Remove markdown formatting
+    texto = texto.replace('*', '').replace('#', '').replace('_', ' ')
+    
+    # Remove URLs
+    texto = re.sub(r'http\S+', '', texto)
+    
+    # Normalize whitespace
+    texto = " ".join(texto.split())
+    
+    return texto
+
+# Example
+raw_text = "/*app(netflix)*/ Abriendo Netflix para ti, Rosario. https://netflix.com"
+cleaned = limpiar_texto_para_audio(raw_text)
+print(cleaned)  # "Abriendo Netflix para ti, Rosario."
+```
+
+```python Intent Text Preprocessing
+import re
+import unicodedata
+
+def preprocess_intent_text(text):
+    """Preprocess text for intent classification."""
+    # Convert to lowercase
+    text = text.lower()
+    
+    # Remove accents (optional)
+    text = unicodedata.normalize('NFKD', text)
+    text = ''.join([c for c in text if not unicodedata.combining(c)])
+    
+    # Remove punctuation except spaces
+    text = re.sub(r'[^\w\s]', '', text)
+    
+    # Normalize whitespace
+    text = ' '.join(text.split())
+    
+    return text
+
+# Example
+raw_text = "¡Abre Netflix, por favor!"
+processed = preprocess_intent_text(raw_text)
+print(processed)  # "abre netflix por favor"
+```
+</CodeGroup>
+
+---
+
+## Performance Tips
+
+<CardGroup cols={2}>
+  <Card title="Audio Processing" icon="microphone">
+    - Use 16kHz sample rate for speech
+    - Keep duration consistent (5 sec)
+    - Normalize audio length before feature extraction
+    - Use mono audio for efficiency
+  </Card>
+  
+  <Card title="MFCC Extraction" icon="wave-square">
+    - Standard: 13 MFCC coefficients
+    - Add delta features for motion capture
+    - Use consistent hop_length (512)
+    - Cache extracted features when possible
+  </Card>
+  
+  <Card title="TF-IDF" icon="text">
+    - Use bigrams for better context
+    - Set max_features to limit vocabulary
+    - Remove rare terms with min_df
+    - Enable sublinear_tf for large datasets
+  </Card>
+  
+  <Card title="Datasets" icon="database">
+    - Validate data before training
+    - Balance positive/negative samples
+    - Use data augmentation for audio
+    - Save processed features to disk
+  </Card>
+</CardGroup>
+
+---
+
+## Common Patterns
+
+<AccordionGroup>
+  <Accordion title="End-to-End Audio Pipeline">
+    ```python
+    import sounddevice as sd
+    import numpy as np
+    import tensorflow as tf
+    
+    # 1. Record audio
+    audio = sd.rec(
+        int(5 * 16000),
+        samplerate=16000,
+        channels=1
+    )
+    sd.wait()
+    
+    # 2. Extract features
+    features = extract_features(audio.flatten())
+    
+    # 3. Prepare for model
+    features = np.expand_dims(features, axis=0)
+    
+    # 4. Predict
+    model = tf.keras.models.load_model('model.h5')
+    prediction = model.predict(features)[0][0]
+    
+    # 5. Decision
+    if prediction > 0.8:
+        print("Wake word detected!")
+    ```
+  </Accordion>
+  
+  <Accordion title="Batch Processing">
+    ```python
+    import os
+    import librosa
+    import numpy as np
+    
+    def batch_process_audio(directory, output_file):
+        """Process all audio files and save features."""
+        features_list = []
+        filenames = []
+        
+        for filename in os.listdir(directory):
+            if filename.endswith('.wav'):
+                filepath = os.path.join(directory, filename)
+                audio, sr = librosa.load(filepath, sr=16000)
+                features = extract_features(audio)
+                
+                features_list.append(features)
+                filenames.append(filename)
+        
+        # Save to disk
+        np.savez(
+            output_file,
+            features=np.array(features_list),
+            filenames=filenames
+        )
+    
+    # Usage
+    batch_process_audio('audio_files/', 'features.npz')
+    ```
+  </Accordion>
+  
+  <Accordion title="Text Feature Pipeline">
+    ```python
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.svm import SVC
+    from sklearn.pipeline import Pipeline
+    
+    # Create pipeline
+    pipeline = Pipeline([
+        ('tfidf', TfidfVectorizer(
+            ngram_range=(1, 2),
+            lowercase=True
+        )),
+        ('clf', SVC(kernel='linear', probability=True))
+    ])
+    
+    # Train
+    texts = ["abre netflix", "busca videos", "apaga tv"]
+    labels = ["open_app", "search", "power_off"]
+    pipeline.fit(texts, labels)
+    
+    # Predict
+    new_text = ["abre youtube"]
+    intent = pipeline.predict(new_text)[0]
+    confidence = max(pipeline.predict_proba(new_text)[0])
+    
+    print(f"Intent: {intent} ({confidence:.2%})")
+    ```
+  </Accordion>
+</AccordionGroup>

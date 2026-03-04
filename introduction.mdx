@@ -1,0 +1,189 @@
+---
+title: Introduction
+description: Welcome to Grupo de Anda's open-source educational repository containing Python AI/ML projects, web applications, and Arduino hardware prototypes
+---
+
+## Welcome to Grupo de Anda
+
+This repository contains **open-source educational projects** from Grupo de Anda, designed to serve as a learning resource for the developer community. The projects span software development (primarily Python) and hardware prototyping (Arduino, ESP32, and other microcontrollers).
+
+<Note>
+  This code is shared for educational purposes and transparency. It contains **no user data** and is designed to demonstrate secure coding practices and project implementations.
+</Note>
+
+## What you'll find here
+
+The repository is organized into two main sections:
+
+### 1. Software projects
+
+Python-based applications and scripts covering:
+
+- **AI/ML Projects**: Custom machine learning models, voice assistants, and AI training frameworks
+- **Desktop Applications**: GUI applications built with CustomTkinter
+- **Web Applications**: HTML/CSS interfaces and web integrations
+- **Automation Scripts**: Task automation and utility programs
+
+<CodeGroup>
+```python AI Assistant Example
+# From proyectos/ai creator/asistantkamutini.py
+import requests
+from gtts import gTTS
+import pygame
+
+# Google Gemini API integration
+API_KEY_GEMINI = ""
+GEMINI_MODEL = "gemini-1.5-flash"
+
+# Generation parameters
+TEMP = 0.6
+TOP_K = 40
+TOP_P = 0.9
+MAX_TOKENS = 250
+```
+
+```python PyTorch Model Training
+# From proyectos/ai creator/kamutini/modelo.py
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+
+# Intelligent device selection
+def get_best_device():
+    if torch.cuda.is_available():
+        return "cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
+
+DEVICE = get_best_device()
+```
+</CodeGroup>
+
+### 2. Hardware projects
+
+Arduino and microcontroller-based prototypes including:
+
+- **Arduino Nano Projects**: Solar lamp controllers, automated systems
+- **Circuit Examples**: Electronic circuit guides and schematics
+- **Integrated Projects**: Hardware-software integration examples
+
+<CodeGroup>
+```cpp Solar Lamp Controller
+// From proyectos hadwere/arduino nano/lampara_solar/v2/codigo.ino
+const int pinMOTOR = 10;
+const int pinINDICADOR = 13;
+
+// Timer configuration (11 hours ON, 24 hours OFF)
+const unsigned long ON_TIME = 11UL * 60UL * 60UL * 1000UL;
+const unsigned long OFF_TIME = 24UL * 60UL * 60UL * 1000UL;
+const unsigned long AVISO = 1UL * 60UL * 1000UL;
+
+void setup() {
+  pinMode(pinMOTOR, OUTPUT);
+  pinMode(pinINDICADOR, OUTPUT);
+  
+  digitalWrite(pinMOTOR, HIGH);
+  motorEncendido = true;
+  tiempoReferencia = millis();
+}
+```
+</CodeGroup>
+
+## Technologies used
+
+The repository leverages several programming languages and frameworks:
+
+<CardGroup cols={2}>
+  <Card title="Python" icon="python">
+    Primary language for AI/ML projects, desktop apps, and automation scripts
+  </Card>
+  <Card title="C++" icon="microchip">
+    Used for Arduino and microcontroller programming
+  </Card>
+  <Card title="HTML/CSS" icon="code">
+    Web interfaces and front-end development
+  </Card>
+  <Card title="PyTorch" icon="brain">
+    Deep learning framework for custom AI model training
+  </Card>
+</CardGroup>
+
+## Key Python libraries
+
+Projects in this repository commonly use:
+
+- **AI/ML**: `torch`, `transformers`, `datasets`, `peft`, `accelerate`, `gpt4all`, `llama-cpp-python`
+- **Audio Processing**: `gTTS`, `pygame`, `librosa`, `sounddevice`, `pydub`
+- **GUI Development**: `customtkinter`, `tkinter`
+- **Utilities**: `requests`, `numpy`, `pandas`
+
+## Featured projects
+
+### AI Creator (Kamutini)
+
+A custom AI training framework located in `proyectos/ai creator/` that includes:
+
+- Custom transformer-based model architecture
+- Training datasets and data normalization tools
+- Intent detection model for conversational AI
+- Support for CPU, CUDA, and MPS (Apple Silicon) acceleration
+
+### miPOS - Point of Sale System
+
+A desktop POS application (`proyectos/mipunto -/`) with:
+
+- Inventory management
+- Sales tracking
+- AI-powered reporting
+- CustomTkinter GUI interface
+
+### Voice Assistant
+
+An AI voice assistant (`proyectos/ai creator/asistantkamutini.py`) featuring:
+
+- Google Gemini API integration
+- Text-to-speech with gTTS
+- Web search capabilities
+- Intent detection and command parsing
+
+## Important notices
+
+<Warning>
+  This repository is designed for **Ubuntu** and tested with **Python 3.11** and **3.13**. Windows and macOS users may need to adjust configurations.
+</Warning>
+
+<Info>
+  All code is shared with the intention of demonstrating secure data handling practices and avoiding associations with malicious software. The community is invited to review, modify, and report errors.
+</Info>
+
+## Community participation
+
+You're encouraged to:
+
+- Review the code and identify potential improvements
+- Test projects and report bugs
+- Learn from the implementations
+- Contribute fixes and enhancements
+
+To contribute:
+
+1. Download the repository as a ZIP file
+2. Identify files with errors or areas for improvement
+3. Make and verify your changes
+4. Send your modifications to: `deandaguzmand@gmail.com`
+
+<Note>
+  This contribution method helps maintain organization and ensures all suggestions are properly reviewed.
+</Note>
+
+## Project creator
+
+These projects are created and maintained by **Daniel Tecnologi**.
+
+Website: [https://oficialdanieltec.netlify.app/](https://oficialdanieltec.netlify.app/)
+
+---
+
+Ready to get started? Continue to the [Quick Start Guide](/quickstart) to set up your development environment.

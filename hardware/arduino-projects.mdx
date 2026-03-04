@@ -1,0 +1,200 @@
+---
+title: 'Arduino Projects'
+description: 'Documentación completa de proyectos Arduino del Grupo de Anda'
+---
+
+## Proyectos Arduino Nano
+
+Esta página documenta los proyectos desarrollados con Arduino Nano, incluyendo especificaciones técnicas, código fuente y diagramas de conexión.
+
+## Duende Servo Control
+
+Ver documentación completa en [Duende Servo Control](/hardware/duende-servo).
+
+---
+
+## Lámpara Solar
+
+### Descripción
+
+Sistema automático de temporización para control de una lámpara solar. El proyecto implementa ciclos de encendido/apagado programados con indicadores visuales de estado.
+
+### Especificaciones
+
+<Info>
+  **Ciclo de operación:**
+  - Encendido: 11 horas continuas
+  - Apagado: 24 horas de espera
+  - Aviso: Parpadeo 1 minuto antes de apagar
+</Info>
+
+### Hardware Requerido
+
+- Arduino Nano
+- Módulo relay o transistor para control de motor
+- LED indicador (opcional, usa LED integrado pin 13)
+- Lámpara solar o motor a controlar
+- Fuente de alimentación 5V
+- Cables de conexión
+
+### Configuración de Pines
+
+| Pin | Componente | Función |
+|-----|------------|----------|
+| 10  | Motor/Relay | Control de lámpara solar |
+| 13  | LED Indicador | Estado del sistema |
+
+### Diagrama de Estados
+
+<Steps>
+  <Step title="Fase ON (11 horas)">
+    El motor/lámpara está encendido. LED indicador parpadea rápido (250ms).
+  </Step>
+  
+  <Step title="Aviso (1 minuto)">
+    Último minuto antes de apagar. El motor parpadea como advertencia (500ms).
+  </Step>
+  
+  <Step title="Fase OFF (24 horas)">
+    Motor apagado completamente. LED indicador parpadea lento (2000ms) para ahorrar energía.
+  </Step>
+  
+  <Step title="Reinicio del ciclo">
+    Después de 24 horas OFF, vuelve automáticamente a la Fase ON.
+  </Step>
+</Steps>
+
+### Código Fuente
+
+<CodeGroup>
+
+```cpp lampara_solar.ino
+// --- CONFIGURACIÓN DE PINES ---
+const int pinMOTOR = 10;     
+const int pinINDICADOR = 13; 
+
+// --- DEFINICIÓN DE TIEMPOS (Exactos y Seguros) ---
+const unsigned long ON_TIME  = 11UL * 60UL * 60UL * 1000UL; // 11 Horas
+const unsigned long OFF_TIME = 24UL * 60UL * 60UL * 1000UL; // 24 Horas
+const unsigned long AVISO    = 1UL * 60UL * 1000UL;         // 1 Minuto
+
+// Variables de control de tiempo
+unsigned long tiempoReferencia;
+bool motorEncendido = false;
+
+void setup() {
+  pinMode(pinMOTOR, OUTPUT);
+  pinMode(pinINDICADOR, OUTPUT);
+  
+  // Iniciar ciclo de encendido inmediatamente
+  digitalWrite(pinMOTOR, HIGH);
+  motorEncendido = true;
+  tiempoReferencia = millis();
+}
+
+void loop() {
+  unsigned long tiempoActual = millis();
+  unsigned long transcurrido = tiempoActual - tiempoReferencia;
+
+  if (motorEncendido) {
+    // --- LÓGICA MIENTRAS DEBE ESTAR ENCENDIDO ---
+    if (transcurrido >= ON_TIME) {
+      // Se acabó el tiempo de encendido, pasamos a OFF
+      digitalWrite(pinMOTOR, LOW);
+      motorEncendido = false;
+      tiempoReferencia = tiempoActual; // Reiniciamos el reloj para la fase OFF
+    } 
+    else if (transcurrido >= (ON_TIME - AVISO)) {
+      // Estamos en el último minuto: Parpadeo de aviso
+      digitalWrite(pinMOTOR, (tiempoActual / 500) % 2);
+    }
+    
+    // Indicador 13 parpadea rápido (Modo ON)
+    digitalWrite(pinINDICADOR, (tiempoActual / 250) % 2);
+
+  } else {
+    // --- LÓGICA MIENTRAS DEBE ESTAR APAGADO ---
+    digitalWrite(pinMOTOR, LOW);
+
+    if (transcurrido >= OFF_TIME) {
+      // Se acabaron las 24 horas de espera, volvemos a ON
+      digitalWrite(pinMOTOR, HIGH);
+      motorEncendido = true;
+      tiempoReferencia = tiempoActual; // Reiniciamos el reloj para la fase ON
+    }
+
+    // Indicador 13 parpadea muy lento (Modo OFF / Ahorro)
+    digitalWrite(pinINDICADOR, (tiempoActual / 2000) % 2);
+  }
+}
+```
+
+</CodeGroup>
+
+### Características Técnicas
+
+<AccordionGroup>
+  <Accordion title="Sistema de Temporización">
+    Utiliza `millis()` para temporización no bloqueante, permitiendo que el Arduino maneje múltiples tareas simultáneamente sin usar `delay()`.
+    
+    **Ventajas:**
+    - No bloquea el procesador
+    - Preciso en períodos largos
+    - Permite múltiples temporizadores simultáneos
+  </Accordion>
+
+  <Accordion title="Manejo de Overflow">
+    El uso de diferencias (`transcurrido = tiempoActual - tiempoReferencia`) maneja automáticamente el overflow de `millis()` que ocurre después de ~49 días.
+  </Accordion>
+
+  <Accordion title="Eficiencia Energética">
+    El LED indicador parpadea muy lentamente durante la fase OFF (cada 2 segundos) para minimizar el consumo de energía.
+  </Accordion>
+
+  <Accordion title="Aviso Visual">
+    El motor parpadea durante el último minuto antes de apagarse, útil para saber cuándo terminará el ciclo.
+  </Accordion>
+</AccordionGroup>
+
+### Modificaciones Posibles
+
+<Tip>
+  **Ajustar tiempos**: Modifica las constantes `ON_TIME` y `OFF_TIME` según tus necesidades. Usa el formato `HH * 60 * 60 * 1000` para horas o `MM * 60 * 1000` para minutos.
+</Tip>
+
+```cpp
+// Ejemplo: 8 horas ON, 16 horas OFF
+const unsigned long ON_TIME  = 8UL * 60UL * 60UL * 1000UL;
+const unsigned long OFF_TIME = 16UL * 60UL * 60UL * 1000UL;
+```
+
+<Warning>
+  Si controlas cargas de alta corriente, usa un relay o transistor adecuado. Los pines de Arduino solo proveen 40mA máximo.
+</Warning>
+
+### Diagrama de Conexión
+
+```
+Arduino Nano          Componentes
+┌─────────────┐
+│             │
+│         D10 ├──────► Relay/Motor Control
+│             │
+│         D13 ├──────► LED Indicador (interno)
+│             │
+│         GND ├──────► GND común
+│             │
+│         VIN ├──────► 5V alimentación
+└─────────────┘
+```
+
+## Recursos Adicionales
+
+<CardGroup cols={2}>
+  <Card title="Arduino Reference" icon="book" href="https://www.arduino.cc/reference/en/">
+    Documentación oficial de Arduino
+  </Card>
+  <Card title="Servo Library" icon="gears" href="https://www.arduino.cc/en/Reference/Servo">
+    Librería Servo para control de servomotores
+  </Card>
+</CardGroup>

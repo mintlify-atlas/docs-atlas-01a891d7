@@ -1,0 +1,692 @@
+---
+title: AI Models
+description: AI model APIs including Gemini integration, LSTM wake word detection, and intent classification
+icon: brain
+---
+
+## Overview
+
+Grupo de Anda's AI system includes three core model types:
+
+- **Gemini API Integration** - Cloud-based conversational AI using Google's Gemini 1.5 Flash
+- **LSTM Wake Word Detection** - On-device neural network for voice activation
+- **Intent Classification** - Sklearn-based NLP pipeline for understanding user commands
+
+---
+
+## Gemini API Integration
+
+### Configuration
+
+The Gemini API requires configuration for model parameters and API authentication.
+
+<CodeGroup>
+```python Configuration
+# API Authentication
+API_KEY_GEMINI = "your-gemini-api-key"
+GEMINI_MODEL = "gemini-1.5-flash"
+
+# Generation Parameters
+TEMP = 0.6            # Temperature (creativity)
+TOP_K = 40            # Top-K sampling
+TOP_P = 0.9           # Top-P (nucleus) sampling
+MAX_TOKENS = 250      # Maximum output tokens
+
+# Memory Configuration
+MAX_HISTORIAL = 10    # Conversation history limit
+```
+
+```python Search Integration
+# Google Custom Search API
+API_KEY_GOOGLE_SEARCH = "your-search-api-key"
+SEARCH_ENGINE_ID = "your-search-engine-id"
+```
+</CodeGroup>
+
+### KamutiniEngine Class
+
+Main engine class for conversational AI with device control capabilities.
+
+<ParamField path="__init__" type="method">
+  Initializes the Kamutini engine with TV device scanning and audio setup.
+  
+  ```python
+  engine = KamutiniEngine()
+  ```
+  
+  **Initialization Steps:**
+  - Scans local network for Roku TV devices
+  - Sets up pygame mixer for audio output
+  - Initializes conversation history list
+</ParamField>
+
+### procesar_gemini()
+
+Processes user queries using Google's Gemini API.
+
+<ParamField path="consulta" type="string" required>
+  User's input text to be processed by the AI
+</ParamField>
+
+<ResponseField name="response" type="string">
+  AI-generated response text with embedded command tags
+</ResponseField>
+
+<CodeGroup>
+```python Usage
+engine = KamutiniEngine()
+response = engine.procesar_gemini("¿Qué hora es?")
+print(response)
+```
+
+```python API Payload Structure
+payload = {
+    "contents": [
+        {"role": "user", "parts": [{"text": "user query"}]},
+        {"role": "model", "parts": [{"text": "ai response"}]}
+    ],
+    "systemInstruction": {
+        "parts": [{"text": "system prompt with context"}]
+    },
+    "generationConfig": {
+        "temperature": 0.6,
+        "topK": 40,
+        "topP": 0.9,
+        "maxOutputTokens": 250
+    }
+}
+```
+</CodeGroup>
+
+**API Endpoint:**
+```
+https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}
+```
+
+### responder()
+
+Complete response pipeline with device control and memory management.
+
+<ParamField path="consulta" type="string" required>
+  User's query text
+</ParamField>
+
+<ResponseField name="return" type="tuple">
+  Returns `(response_text: str, should_exit: bool)`
+  - `response_text`: Cleaned AI response without command tags
+  - `should_exit`: Boolean indicating if conversation should end
+</ResponseField>
+
+<CodeGroup>
+```python Basic Usage
+engine = KamutiniEngine()
+response, should_exit = engine.responder("Abre Netflix")
+print(response)
+
+if should_exit:
+    print("Ending conversation")
+```
+
+```python Command Tag Processing
+# Supported command tags in AI responses:
+# /*app(netflix)*/      - Launch application
+# /*search(youtube, cats)*/  - Search content
+# /*home*/               - Go to home screen
+# /*power*/              - Power off device
+# /*resultados(clima)*/  - Google search
+# /*salir*/              - Exit conversation
+```
+</CodeGroup>
+
+**Command Tags:**
+- `/*app(name)*/` - Opens specified Roku application
+- `/*search(app, query)*/` - Searches content in app
+- `/*home*/` - Returns to home screen
+- `/*power*/` - Powers off TV
+- `/*resultados(query)*/` - Performs Google search
+- `/*salir*/` - Ends conversation
+
+### google_search_custom()
+
+Performs custom Google searches using the Custom Search API.
+
+<ParamField path="query" type="string" required>
+  Search query text
+</ParamField>
+
+<ResponseField name="results" type="string">
+  Formatted string with top 3 search result snippets, or error message
+</ResponseField>
+
+```python Example
+results = google_search_custom("clima en guadalajara")
+print(results)
+# Output: "Rosario, encontré esto: [snippet 1] [snippet 2] [snippet 3]"
+```
+
+---
+
+## LSTM Wake Word Detection
+
+### Model Architecture
+
+Deep learning model for real-time wake word detection using MFCC features.
+
+<CodeGroup>
+```python Model Configuration
+# Audio Parameters
+SAMPLE_RATE = 16000   # 16 kHz sampling rate
+DURATION = 5          # Audio duration in seconds
+CHANNELS = 1          # Mono audio
+N_MFCC = 13           # Number of MFCC coefficients
+
+# Model Parameters
+LSTM_UNITS = 64       # LSTM layer size
+DROPOUT = 0.3         # Dropout rate
+DENSE_UNITS = 32      # Dense layer size
+```
+
+```python Architecture
+model = Sequential([
+    Input(shape=(time_steps, 13)),
+    LSTM(64, return_sequences=False),
+    Dropout(0.3),
+    Dense(32, activation='relu'),
+    Dense(1, activation='sigmoid')
+])
+
+model.compile(
+    optimizer='adam',
+    loss='binary_crossentropy',
+    metrics=['accuracy']
+)
+```
+</CodeGroup>
+
+### extract_features()
+
+Extracts MFCC (Mel-Frequency Cepstral Coefficients) features from audio data.
+
+<ParamField path="audio_data" type="numpy.ndarray" required>
+  Raw audio data as numpy array
+</ParamField>
+
+<ResponseField name="mfcc" type="numpy.ndarray">
+  MFCC feature matrix with shape `(time_steps, n_mfcc)`
+  - Automatically pads or truncates audio to target length
+  - Returns transposed MFCC matrix for LSTM input
+</ResponseField>
+
+```python Example
+import librosa
+import numpy as np
+
+# Load audio file
+audio, sr = librosa.load('wake_word.wav', sr=16000, duration=5)
+
+# Extract features
+mfcc_features = extract_features(audio)
+print(mfcc_features.shape)  # (time_steps, 13)
+```
+
+**Feature Processing:**
+1. Pads audio with zeros if too short
+2. Truncates audio if too long
+3. Computes 13 MFCC coefficients
+4. Transposes to `(time_steps, n_mfcc)` format
+
+### prepare_dataset()
+
+Loads and prepares training data from positive and negative audio samples.
+
+<ResponseField name="return" type="tuple">
+  Returns `(X: np.ndarray, y: np.ndarray)`
+  - `X`: Feature arrays with shape `(n_samples, time_steps, n_mfcc)`
+  - `y`: Binary labels (1 for wake word, 0 for other sounds)
+</ResponseField>
+
+```python Example
+X_train, y_train = prepare_dataset()
+print(f"Training samples: {len(X_train)}")
+print(f"Feature shape: {X_train[0].shape}")
+print(f"Labels: {np.unique(y_train)}")
+```
+
+**Directory Structure:**
+```
+make word/
+├── audios/          # Positive samples (wake word)
+├── audios bad/      # Negative samples (other sounds)
+└── wake_word_model.h5  # Saved model
+```
+
+### build_model()
+
+Constructs the LSTM neural network architecture.
+
+<ParamField path="input_shape" type="tuple" required>
+  Shape of input features `(time_steps, n_mfcc)`
+</ParamField>
+
+<ResponseField name="model" type="tensorflow.keras.Model">
+  Compiled Keras model ready for training
+  - Loss: binary_crossentropy
+  - Optimizer: adam
+  - Metrics: accuracy
+</ResponseField>
+
+```python Example
+X_train, y_train = prepare_dataset()
+model = build_model(X_train[0].shape)
+
+# Train the model
+model.fit(
+    X_train, y_train,
+    epochs=40,
+    batch_size=8,
+    validation_split=0.2
+)
+
+# Save the model
+model.save('wake_word_model.h5')
+```
+
+### Real-time Detection
+
+Live wake word detection using sounddevice.
+
+```python Detection Loop
+import sounddevice as sd
+import tensorflow as tf
+
+# Load trained model
+model = tf.keras.models.load_model('wake_word_model.h5')
+
+threshold = 0.8  # Confidence threshold
+
+while True:
+    # Record 5 seconds of audio
+    rec = sd.rec(
+        int(DURATION * SAMPLE_RATE),
+        samplerate=SAMPLE_RATE,
+        channels=CHANNELS
+    )
+    sd.wait()
+    audio_chunk = rec.flatten()
+    
+    # Extract features and predict
+    feat = extract_features(audio_chunk)
+    feat = np.expand_dims(feat, axis=0)
+    
+    prediction = model.predict(feat, verbose=0)[0][0]
+    
+    if prediction > threshold:
+        print(f"Wake word detected! (confidence: {prediction:.2f})")
+        # Trigger action here
+```
+
+---
+
+## Intent Classification
+
+### Pipeline Architecture
+
+Sklearn-based NLP pipeline using TF-IDF vectorization and SVM classification.
+
+<CodeGroup>
+```python Pipeline Configuration
+from sklearn.pipeline import Pipeline
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.svm import SVC
+
+modelo = Pipeline([
+    ('tfidf', TfidfVectorizer(
+        ngram_range=(1, 2),    # Unigrams and bigrams
+        lowercase=True,         # Convert to lowercase
+        stop_words=None         # No stopword removal
+    )),
+    ('clf', SVC(
+        kernel='linear',        # Linear kernel
+        probability=True,       # Enable probability estimates
+        C=1.0                   # Regularization parameter
+    ))
+])
+```
+
+```json Dataset Format
+[
+  {
+    "text": "abre netflix",
+    "intent": "open_app"
+  },
+  {
+    "text": "busca videos de gatos",
+    "intent": "search_content"
+  },
+  {
+    "text": "apaga la televisión",
+    "intent": "power_off"
+  }
+]
+```
+</CodeGroup>
+
+### cargar_datos()
+
+Loads training dataset from JSON file.
+
+<ParamField path="ruta_archivo" type="string" required>
+  Path to JSON dataset file
+</ParamField>
+
+<ResponseField name="data" type="list">
+  List of dictionaries with 'text' and 'intent' keys
+</ResponseField>
+
+```python Example
+data = cargar_datos('/path/to/dataset.json')
+print(f"Loaded {len(data)} training examples")
+```
+
+**Error Handling:**
+- `FileNotFoundError` - Dataset file not found
+- `json.JSONDecodeError` - Invalid JSON format
+
+### entrenar_modelo()
+
+Trains the intent classification model with validation.
+
+<ParamField path="dataset" type="list" required>
+  List of training examples with 'text' and 'intent' fields
+</ParamField>
+
+<ParamField path="ruta_guardado" type="string" required>
+  Path where trained model will be saved (.pkl file)
+</ParamField>
+
+<ResponseField name="modelo" type="sklearn.pipeline.Pipeline">
+  Trained pipeline model with TfidfVectorizer and SVC classifier
+</ResponseField>
+
+<CodeGroup>
+```python Training Example
+dataset = cargar_datos('dataset.json')
+modelo = entrenar_modelo(dataset, 'modelo_entrenado.pkl')
+
+# Model is automatically saved to disk
+print("Model trained and saved successfully")
+```
+
+```python Loading Existing Model
+import joblib
+
+# Load pre-trained model
+modelo = joblib.load('modelo_entrenado.pkl')
+
+# Make predictions
+intencion = modelo.predict(["abre youtube"])[0]
+print(f"Intent: {intencion}")
+```
+</CodeGroup>
+
+**Training Process:**
+1. Validates dataset for required fields
+2. Filters out invalid entries
+3. Splits data (80/20 train/test)
+4. Trains TF-IDF + SVM pipeline
+5. Generates classification report
+6. Saves model using joblib
+
+### Prediction Methods
+
+#### predict()
+
+Predicts intent for given text input.
+
+<ParamField path="text" type="list[string]" required>
+  List of text strings to classify
+</ParamField>
+
+<ResponseField name="intents" type="numpy.ndarray">
+  Array of predicted intent labels
+</ResponseField>
+
+```python Example
+modelo = joblib.load('modelo_entrenado.pkl')
+
+# Single prediction
+intencion = modelo.predict(["pon música relajante"])[0]
+print(f"Intent: {intencion}")
+
+# Batch prediction
+textos = [
+    "busca películas de acción",
+    "apaga las luces",
+    "cuál es el clima"
+]
+intenciones = modelo.predict(textos)
+for texto, intent in zip(textos, intenciones):
+    print(f"{texto} -> {intent}")
+```
+
+#### predict_proba()
+
+Returns probability distributions for all possible intents.
+
+<ParamField path="text" type="list[string]" required>
+  List of text strings to classify
+</ParamField>
+
+<ResponseField name="probabilities" type="numpy.ndarray">
+  2D array of shape `(n_samples, n_classes)` with probability for each class
+</ResponseField>
+
+```python Example with Confidence
+modelo = joblib.load('modelo_entrenado.pkl')
+
+texto = "abre netflix por favor"
+intencion = modelo.predict([texto])[0]
+probabilidades = modelo.predict_proba([texto])
+confianza = max(probabilidades[0])
+
+print(f"Intent: {intencion}")
+print(f"Confidence: {confianza:.2%}")
+
+# Output:
+# Intent: open_app
+# Confidence: 94.32%
+```
+
+### iniciar_interfaz_chat()
+
+Starts interactive command-line interface for testing the model.
+
+<ParamField path="modelo" type="sklearn.pipeline.Pipeline" required>
+  Trained intent classification model
+</ParamField>
+
+```python Interactive Testing
+import joblib
+
+modelo = joblib.load('modelo_entrenado.pkl')
+iniciar_interfaz_chat(modelo)
+
+# Interactive prompt:
+# Tú: abre netflix
+# Intención detectada: [open_app] (Confianza: 95.23%)
+# ------------------------------
+```
+
+**Features:**
+- Real-time intent detection
+- Confidence scores for predictions
+- Type 'salir' to exit
+- Handles empty inputs gracefully
+
+---
+
+## Common Patterns
+
+### Multi-Model Workflow
+
+<CodeGroup>
+```python Voice Assistant Pipeline
+import numpy as np
+import tensorflow as tf
+import joblib
+
+# 1. Load models
+wake_model = tf.keras.models.load_model('wake_word_model.h5')
+intent_model = joblib.load('modelo_entrenado.pkl')
+gemini_engine = KamutiniEngine()
+
+# 2. Wake word detection
+audio = record_audio(duration=5)
+features = extract_features(audio)
+wake_prob = wake_model.predict(features)[0][0]
+
+if wake_prob > 0.8:
+    # 3. Speech-to-text (not shown)
+    user_text = transcribe_audio(audio)
+    
+    # 4. Intent classification
+    intent = intent_model.predict([user_text])[0]
+    confidence = max(intent_model.predict_proba([user_text])[0])
+    
+    # 5. Generate response with Gemini
+    response, should_exit = gemini_engine.responder(user_text)
+    
+    # 6. Text-to-speech
+    gemini_engine.hablar_local(response)
+```
+
+```python Batch Intent Processing
+import joblib
+import pandas as pd
+
+modelo = joblib.load('modelo_entrenado.pkl')
+
+# Process multiple user queries
+queries = [
+    "abre youtube",
+    "busca videos de recetas",
+    "apaga la televisión",
+    "qué hora es"
+]
+
+# Classify all at once
+intents = modelo.predict(queries)
+probs = modelo.predict_proba(queries)
+confidences = [max(p) for p in probs]
+
+# Create results dataframe
+results = pd.DataFrame({
+    'query': queries,
+    'intent': intents,
+    'confidence': confidences
+})
+
+print(results)
+```
+</CodeGroup>
+
+---
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Gemini API Errors">
+    ```python
+    try:
+        response = engine.procesar_gemini(consulta)
+    except requests.exceptions.Timeout:
+        print("API request timed out after 15 seconds")
+    except KeyError:
+        print("API response missing 'candidates' field")
+        # Returns: "Rosario, hubo un tropiezo con el servicio de Google."
+    ```
+    
+    Common issues:
+    - Invalid API key
+    - Rate limiting
+    - Network connectivity
+    - Malformed responses
+  </Accordion>
+  
+  <Accordion title="LSTM Model Errors">
+    ```python
+    try:
+        model = tf.keras.models.load_model('wake_word_model.h5')
+    except OSError:
+        print("Model file not found - train the model first")
+    
+    try:
+        X_train, y_train = prepare_dataset()
+        if len(X_train) == 0:
+            raise ValueError("No training data found")
+    except Exception as e:
+        print(f"Dataset preparation failed: {e}")
+    ```
+    
+    Common issues:
+    - Missing audio files
+    - Incorrect audio format
+    - Model not trained
+    - Audio device errors
+  </Accordion>
+  
+  <Accordion title="Intent Classification Errors">
+    ```python
+    try:
+        data = cargar_datos('dataset.json')
+    except FileNotFoundError:
+        print("Dataset file not found")
+    except json.JSONDecodeError:
+        print("Invalid JSON format in dataset")
+    
+    # Validate dataset entries
+    if not all('text' in item and 'intent' in item for item in data):
+        print("Dataset entries missing required fields")
+    ```
+    
+    Common issues:
+    - Missing dataset file
+    - Invalid JSON format
+    - Missing 'text' or 'intent' fields
+    - Insufficient training data
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Performance Optimization
+
+<CardGroup cols={2}>
+  <Card title="Gemini API" icon="bolt">
+    - Set appropriate `MAX_TOKENS` (250 recommended)
+    - Adjust `TEMP` for creativity vs consistency
+    - Limit `MAX_HISTORIAL` to reduce token usage
+    - Use `timeout=15` to prevent hanging
+  </Card>
+  
+  <Card title="LSTM Model" icon="microchip">
+    - Use `batch_size=8` for training
+    - Set `DURATION=5` seconds for consistency
+    - Apply dropout (0.3) to prevent overfitting
+    - Use `predict(verbose=0)` for faster inference
+  </Card>
+  
+  <Card title="Intent Classification" icon="gauge-high">
+    - Linear kernel for faster training
+    - Bigram features for better accuracy
+    - Use `C=1.0` for balanced regularization
+    - Enable `probability=True` for confidence scores
+  </Card>
+  
+  <Card title="Audio Processing" icon="waveform">
+    - Use 16kHz sample rate (standard)
+    - Extract 13 MFCC coefficients
+    - Pad/truncate to fixed length
+    - Use mono audio for efficiency
+  </Card>
+</CardGroup>

@@ -1,0 +1,981 @@
+---
+title: Utilities
+description: Helper functions, device control utilities, network scanning, and audio playback
+icon: wrench
+---
+
+## Overview
+
+Utility functions supporting the Grupo de Anda AI system:
+
+- **Roku Device Control** - TV and streaming device management
+- **Network Scanning** - Automatic device discovery
+- **Audio Playback** - Text-to-speech and voice output
+- **Text Processing** - String manipulation and formatting
+
+---
+
+## Roku Device Control
+
+Functions for controlling Roku TV devices over the local network.
+
+### Configuration
+
+Roku device settings and application mappings.
+
+<CodeGroup>
+```python Device Configuration
+# Target Device
+TARGET_IP = "192.168.1.8"  # Primary Roku TV IP address
+
+# Roku Application IDs
+ROKU_APPS = {
+    "netflix": "12",
+    "youtube": "837",
+    "prime": "13",
+    "disney": "291097",
+    "spotify": "199",
+    "hbo": "61322",
+    "plex": "3847",
+    "television": "tvinput.dtv",
+    "canales": "tvinput.dtv",
+    "antena": "tvinput.dtv",
+    "tele": "tvinput.dtv"
+}
+```
+
+```python Network Settings
+# HTTP Endpoints
+ROKU_PORT = 8060
+BASE_URL = f"http://{TARGET_IP}:{ROKU_PORT}"
+
+# Timeouts
+COMMAND_TIMEOUT = 5      # Command execution timeout
+QUERY_TIMEOUT = 1.5      # Device query timeout
+LAUNCH_DELAY = 2         # Delay after app launch
+```
+</CodeGroup>
+
+### enviar_comando_roku()
+
+Sends HTTP commands to Roku device.
+
+<ParamField path="ip" type="string" required>
+  IP address of the Roku device
+</ParamField>
+
+<ParamField path="endpoint" type="string" required>
+  API endpoint (e.g., "keypress/Home", "launch/12")
+</ParamField>
+
+<ParamField path="metodo" type="string" default="POST">
+  HTTP method - "POST" or "GET"
+</ParamField>
+
+<ResponseField name="success" type="bool">
+  Returns `True` if command succeeded, `False` otherwise
+</ResponseField>
+
+<CodeGroup>
+```python Basic Commands
+import requests
+
+def enviar_comando_roku(ip, endpoint, metodo="POST"):
+    """Send command to Roku device."""
+    url = f"http://{ip}:8060/{endpoint}"
+    try:
+        if metodo == "POST":
+            requests.post(url, timeout=5)
+        else:
+            requests.get(url, timeout=5)
+        return True
+    except:
+        return False
+
+# Examples
+ip = "192.168.1.8"
+
+# Launch Netflix
+enviar_comando_roku(ip, "launch/12")
+
+# Press Home button
+enviar_comando_roku(ip, "keypress/Home")
+
+# Power off
+enviar_comando_roku(ip, "keypress/PowerOff")
+
+# Volume up
+enviar_comando_roku(ip, "keypress/VolumeUp")
+```
+
+```python Available Keys
+# Navigation
+enviar_comando_roku(ip, "keypress/Home")
+enviar_comando_roku(ip, "keypress/Up")
+enviar_comando_roku(ip, "keypress/Down")
+enviar_comando_roku(ip, "keypress/Left")
+enviar_comando_roku(ip, "keypress/Right")
+enviar_comando_roku(ip, "keypress/Select")
+enviar_comando_roku(ip, "keypress/Back")
+
+# Playback
+enviar_comando_roku(ip, "keypress/Play")
+enviar_comando_roku(ip, "keypress/Pause")
+enviar_comando_roku(ip, "keypress/Rev")  # Rewind
+enviar_comando_roku(ip, "keypress/Fwd")  # Fast forward
+
+# Audio
+enviar_comando_roku(ip, "keypress/VolumeUp")
+enviar_comando_roku(ip, "keypress/VolumeDown")
+enviar_comando_roku(ip, "keypress/VolumeMute")
+
+# Power
+enviar_comando_roku(ip, "keypress/PowerOff")
+enviar_comando_roku(ip, "keypress/PowerOn")
+```
+</CodeGroup>
+
+**Common Endpoints:**
+
+<Tabs>
+  <Tab title="App Control">
+    - `launch/{app_id}` - Launch application
+    - `install/{app_id}` - Install application
+    - `query/active-app` - Get current app
+    - `query/apps` - List installed apps
+  </Tab>
+  
+  <Tab title="Navigation">
+    - `keypress/Home` - Go to home screen
+    - `keypress/Up/Down/Left/Right` - Navigate
+    - `keypress/Select` - Confirm selection
+    - `keypress/Back` - Go back
+  </Tab>
+  
+  <Tab title="Search">
+    - `search/browse?keyword={query}` - Browse search
+    - `search/browse?keyword={query}&launch=true` - Search and launch
+    - `search/browse?provider-id={app_id}` - Search in specific app
+  </Tab>
+  
+  <Tab title="Device Info">
+    - `query/device-info` - Get device information
+    - `query/media-player` - Get media player state
+    - `query/active-app` - Get active application
+  </Tab>
+</Tabs>
+
+### obtener_app_actual()
+
+Retrieves the currently active application on Roku device.
+
+<ParamField path="ip" type="string" required>
+  IP address of the Roku device
+</ParamField>
+
+<ResponseField name="app_name" type="string">
+  Name of the active application, or "el Menú de Inicio" if on home screen, or "desconocida" if unable to determine
+</ResponseField>
+
+<CodeGroup>
+```python Usage
+def obtener_app_actual(ip):
+    """Get currently active app on Roku."""
+    url = f"http://{ip}:8060/query/active-app"
+    try:
+        response = requests.get(url, timeout=1.5)
+        if response.status_code == 200:
+            match = re.search(r'<app.*?>(.*?)</app>', response.text)
+            if match:
+                app_name = match.group(1)
+                return app_name if app_name != "Roku" else "el Menú de Inicio"
+    except:
+        pass
+    return "desconocida"
+
+# Example
+ip = "192.168.1.8"
+app = obtener_app_actual(ip)
+print(f"Current app: {app}")
+```
+
+```python Response Format
+# XML response from Roku:
+<?xml version="1.0" encoding="UTF-8" ?>
+<active-app>
+  <app id="12">Netflix</app>
+</active-app>
+
+# Or when on home screen:
+<?xml version="1.0" encoding="UTF-8" ?>
+<active-app>
+  <app id="">Roku</app>
+</active-app>
+```
+</CodeGroup>
+
+### ejecutar_busqueda_roku()
+
+Executes a search query in a specific Roku application.
+
+<ParamField path="ip" type="string" required>
+  IP address of the Roku device
+</ParamField>
+
+<ParamField path="app_name" type="string" required>
+  Name of the application to search in (e.g., "netflix", "youtube")
+</ParamField>
+
+<ParamField path="query" type="string" required>
+  Search query text
+</ParamField>
+
+<ResponseField name="success" type="bool">
+  Returns `True` if search was executed successfully
+</ResponseField>
+
+<CodeGroup>
+```python Implementation
+import requests
+import time
+
+def ejecutar_busqueda_roku(ip, app_name, query):
+    """Execute search in Roku app."""
+    # Get app ID from mapping
+    app_id = ROKU_APPS.get(app_name.lower(), "837")  # Default to YouTube
+    
+    if app_id:
+        # Launch the app
+        enviar_comando_roku(ip, f"launch/{app_id}")
+        time.sleep(2)  # Wait for app to load
+        
+        # URL encode the query
+        query_encoded = requests.utils.quote(query)
+        
+        # Execute search
+        endpoint = f"search/browse?keyword={query_encoded}&launch=true&provider-id={app_id}"
+        return enviar_comando_roku(ip, endpoint)
+    
+    return False
+
+# Examples
+ip = "192.168.1.8"
+
+# Search YouTube
+ejecutar_busqueda_roku(ip, "youtube", "recetas de cocina")
+
+# Search Netflix
+ejecutar_busqueda_roku(ip, "netflix", "películas de acción")
+
+# Search with special characters
+ejecutar_busqueda_roku(ip, "prime", "El Señor de los Anillos")
+```
+
+```python Advanced Search
+def search_with_filters(ip, app_name, query, filters=None):
+    """Search with additional filters."""
+    app_id = ROKU_APPS.get(app_name.lower(), "837")
+    
+    # Launch app
+    enviar_comando_roku(ip, f"launch/{app_id}")
+    time.sleep(2)
+    
+    # Build search URL
+    query_encoded = requests.utils.quote(query)
+    endpoint = f"search/browse?keyword={query_encoded}"
+    
+    # Add filters
+    if filters:
+        if 'type' in filters:
+            endpoint += f"&type={filters['type']}"
+        if 'season' in filters:
+            endpoint += f"&season={filters['season']}"
+    
+    endpoint += f"&launch=true&provider-id={app_id}"
+    
+    return enviar_comando_roku(ip, endpoint)
+
+# Example with filters
+search_with_filters(
+    "192.168.1.8",
+    "netflix",
+    "Breaking Bad",
+    filters={'type': 'series', 'season': '1'}
+)
+```
+</CodeGroup>
+
+---
+
+## Network Scanning
+
+Automatic discovery of Roku devices on the local network.
+
+### verificar_roku_por_info()
+
+Verifies if a device at given IP is a Roku device.
+
+<ParamField path="ip" type="string" required>
+  IP address to check
+</ParamField>
+
+<ResponseField name="device_info" type="dict|None">
+  Returns device information dict with 'ip' and 'tipo' keys, or `None` if not a Roku device
+</ResponseField>
+
+<CodeGroup>
+```python Implementation
+import requests
+import re
+
+def verificar_roku_por_info(ip):
+    """Check if device is a Roku."""
+    url = f"http://{ip}:8060/query/device-info"
+    try:
+        response = requests.get(url, timeout=1.5)
+        if response.status_code == 200 and "<device-info>" in response.text:
+            # Extract model name
+            model_match = re.search(
+                r'<model-name>(.*?)</model-name>',
+                response.text
+            )
+            model_name = model_match.group(1) if model_match else "Roku"
+            
+            return {
+                "ip": ip,
+                "tipo": f"Roku ({model_name})"
+            }
+    except:
+        pass
+    return None
+
+# Usage
+device = verificar_roku_por_info("192.168.1.8")
+if device:
+    print(f"Found: {device['tipo']} at {device['ip']}")
+else:
+    print("No Roku device found")
+```
+
+```python Parse Device Info
+def get_full_device_info(ip):
+    """Get complete device information."""
+    url = f"http://{ip}:8060/query/device-info"
+    response = requests.get(url, timeout=1.5)
+    
+    if response.status_code == 200:
+        text = response.text
+        
+        # Extract various fields
+        info = {}
+        patterns = {
+            'model_name': r'<model-name>(.*?)</model-name>',
+            'model_number': r'<model-number>(.*?)</model-number>',
+            'serial_number': r'<serial-number>(.*?)</serial-number>',
+            'software_version': r'<software-version>(.*?)</software-version>',
+            'device_name': r'<user-device-name>(.*?)</user-device-name>',
+        }
+        
+        for key, pattern in patterns.items():
+            match = re.search(pattern, text)
+            if match:
+                info[key] = match.group(1)
+        
+        return info
+    
+    return None
+
+# Example
+info = get_full_device_info("192.168.1.8")
+for key, value in info.items():
+    print(f"{key}: {value}")
+```
+</CodeGroup>
+
+### escanear_red_tvs()
+
+Scans local network for Roku devices.
+
+<ResponseField name="dispositivos" type="list[dict]">
+  List of discovered devices with 'ip' and 'tipo' keys
+</ResponseField>
+
+<CodeGroup>
+```python Implementation
+import socket
+import threading
+import time
+
+def escanear_red_tvs(target_ip="192.168.1.8"):
+    """Scan network for Roku devices."""
+    encontrados = []
+    
+    # Try target IP first
+    tv_principal = verificar_roku_por_info(target_ip)
+    if tv_principal:
+        encontrados.append(tv_principal)
+        return encontrados
+    
+    try:
+        # Get local IP to determine network range
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip_local = s.getsockname()[0]
+        s.close()
+        
+        # Extract network prefix (e.g., "192.168.1")
+        prefijo = ".".join(ip_local.split(".")[:-1])
+        
+        # Scan function for threading
+        def tarea_escaneo(ip_test):
+            res = verificar_roku_por_info(ip_test)
+            if res:
+                encontrados.append(res)
+        
+        # Scan all IPs in range
+        hilos = []
+        for i in range(1, 255):
+            t = threading.Thread(
+                target=tarea_escaneo,
+                args=(f"{prefijo}.{i}",)
+            )
+            t.daemon = True
+            t.start()
+            hilos.append(t)
+        
+        # Wait for scan to complete
+        time.sleep(1.5)
+        
+    except:
+        pass
+    
+    return encontrados
+
+# Usage
+devices = escanear_red_tvs()
+print(f"Found {len(devices)} Roku device(s):")
+for device in devices:
+    print(f"  {device['tipo']} at {device['ip']}")
+```
+
+```python Optimized Scan
+import concurrent.futures
+
+def scan_network_fast(timeout=2.0):
+    """Fast network scan using ThreadPoolExecutor."""
+    # Get network prefix
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip_local = s.getsockname()[0]
+    s.close()
+    prefijo = ".".join(ip_local.split(".")[:-1])
+    
+    # Generate all IPs to scan
+    ips_to_scan = [f"{prefijo}.{i}" for i in range(1, 255)]
+    
+    # Scan with thread pool
+    devices = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        future_to_ip = {
+            executor.submit(verificar_roku_por_info, ip): ip
+            for ip in ips_to_scan
+        }
+        
+        for future in concurrent.futures.as_completed(
+            future_to_ip,
+            timeout=timeout
+        ):
+            result = future.result()
+            if result:
+                devices.append(result)
+    
+    return devices
+
+# Usage
+devices = scan_network_fast(timeout=3.0)
+print(f"Scan complete: {len(devices)} device(s) found")
+```
+</CodeGroup>
+
+---
+
+## Audio Playback
+
+Text-to-speech and audio output utilities.
+
+### hablar_local()
+
+Generates speech from text using Google Text-to-Speech.
+
+<ParamField path="texto" type="string" required>
+  Text to convert to speech (automatically cleaned)
+</ParamField>
+
+<CodeGroup>
+```python Implementation
+import os
+import time
+import re
+from gtts import gTTS
+import pygame
+
+def limpiar_texto_para_audio(texto):
+    """Clean text for TTS."""
+    # Remove command tags
+    texto = re.sub(r'/\*.*?\*/', '', texto)
+    # Remove markdown
+    texto = texto.replace('*', '').replace('#', '').replace('_', ' ')
+    # Remove URLs
+    texto = re.sub(r'http\S+', '', texto)
+    # Normalize whitespace
+    texto = " ".join(texto.split())
+    return texto
+
+def hablar_local(texto):
+    """Speak text using gTTS."""
+    texto_limpio = limpiar_texto_para_audio(texto)
+    if not texto_limpio:
+        return
+    
+    try:
+        # Generate speech
+        tts = gTTS(text=texto_limpio, lang='es', slow=False)
+        filename = "temp_voice.mp3"
+        tts.save(filename)
+        
+        # Play audio
+        pygame.mixer.init()
+        pygame.mixer.music.load(filename)
+        pygame.mixer.music.play()
+        
+        # Wait for playback to finish
+        while pygame.mixer.music.get_busy():
+            time.sleep(0.1)
+        
+        # Cleanup
+        pygame.mixer.music.unload()
+        if os.path.exists(filename):
+            os.remove(filename)
+            
+    except Exception as e:
+        print(f"Audio error: {e}")
+
+# Usage
+hablar_local("Hola Rosario, ¿cómo estás hoy?")
+```
+
+```python Advanced Audio
+import pyttsx3
+
+def hablar_offline(texto, rate=150, volume=1.0):
+    """Offline TTS using pyttsx3."""
+    engine = pyttsx3.init()
+    
+    # Set properties
+    engine.setProperty('rate', rate)      # Speed
+    engine.setProperty('volume', volume)   # Volume (0.0-1.0)
+    
+    # Set Spanish voice if available
+    voices = engine.getProperty('voices')
+    for voice in voices:
+        if 'spanish' in voice.name.lower():
+            engine.setProperty('voice', voice.id)
+            break
+    
+    # Speak
+    engine.say(texto)
+    engine.runAndWait()
+
+# Usage
+hablar_offline("Este es un ejemplo de voz offline", rate=160)
+```
+</CodeGroup>
+
+**gTTS Parameters:**
+
+<ParamField path="lang" type="string" default="es">
+  Language code ("es" for Spanish, "en" for English, etc.)
+</ParamField>
+
+<ParamField path="slow" type="bool" default={false}>
+  Whether to use slow speech rate
+</ParamField>
+
+<ParamField path="tld" type="string" default="com">
+  Top-level domain for accent variation (e.g., "com.mx" for Mexican Spanish)
+</ParamField>
+
+### limpiar_texto_para_audio()
+
+Cleans text before TTS conversion.
+
+<ParamField path="texto" type="string" required>
+  Raw text with potential markdown, URLs, and command tags
+</ParamField>
+
+<ResponseField name="texto_limpio" type="string">
+  Cleaned text ready for text-to-speech
+</ResponseField>
+
+```python Example
+raw = "/*app(netflix)*/ **Abriendo** Netflix para ti. https://netflix.com #tv"
+cleaned = limpiar_texto_para_audio(raw)
+print(cleaned)  # "Abriendo Netflix para ti."
+```
+
+**Cleaning Steps:**
+1. Remove command tags (`/*...*/`)
+2. Remove markdown formatting (`*`, `#`, `_`)
+3. Remove URLs (http/https links)
+4. Normalize whitespace (collapse multiple spaces)
+
+---
+
+## Text Processing
+
+String manipulation utilities.
+
+### Command Tag Extraction
+
+Extract and process embedded command tags from AI responses.
+
+<CodeGroup>
+```python Tag Extraction
+import re
+
+def extract_command_tags(text):
+    """Extract all command tags from text."""
+    tags = re.findall(r'/\*(.*?)\*/', text)
+    return tags
+
+# Example
+text = "Claro Rosario. /*app(netflix)*/ Abriendo Netflix para ti."
+tags = extract_command_tags(text)
+print(tags)  # ['app(netflix)']
+```
+
+```python Parse Commands
+import re
+
+def parse_commands(text):
+    """Parse command tags into structured format."""
+    commands = []
+    tags = re.findall(r'/\*(.*?)\*/', text)
+    
+    for tag in tags:
+        # app(name)
+        if 'app(' in tag:
+            match = re.search(r'app\((.*?)\)', tag)
+            if match:
+                commands.append({
+                    'type': 'app',
+                    'value': match.group(1)
+                })
+        
+        # search(app, query)
+        elif 'search(' in tag:
+            match = re.search(r'search\((.*?),\s*(.*?)\)', tag)
+            if match:
+                commands.append({
+                    'type': 'search',
+                    'app': match.group(1),
+                    'query': match.group(2)
+                })
+        
+        # resultados(query)
+        elif 'resultados(' in tag:
+            match = re.search(r'resultados\((.*?)\)', tag)
+            if match:
+                commands.append({
+                    'type': 'search_web',
+                    'query': match.group(1)
+                })
+        
+        # Simple commands
+        elif tag in ['home', 'power', 'salir']:
+            commands.append({'type': tag})
+    
+    return commands
+
+# Example
+text = "/*app(netflix)*/ Abriendo Netflix. /*search(youtube, gatos)*/"
+commands = parse_commands(text)
+for cmd in commands:
+    print(cmd)
+# {'type': 'app', 'value': 'netflix'}
+# {'type': 'search', 'app': 'youtube', 'query': 'gatos'}
+```
+</CodeGroup>
+
+### Remove Tags
+
+Remove command tags from text for display.
+
+```python
+import re
+
+def remove_command_tags(text):
+    """Remove all command tags from text."""
+    return re.sub(r'/\*.*?\*/', '', text).strip()
+
+# Example
+text = "/*app(netflix)*/ Abriendo Netflix para ti."
+cleaned = remove_command_tags(text)
+print(cleaned)  # "Abriendo Netflix para ti."
+```
+
+---
+
+## Memory Management
+
+Conversation history management.
+
+### Conversation History
+
+Manage conversation context for AI models.
+
+<CodeGroup>
+```python Basic History
+class ConversationHistory:
+    def __init__(self, max_length=10):
+        self.history = []
+        self.max_length = max_length
+    
+    def add(self, user_input, ai_response):
+        """Add conversation turn."""
+        self.history.append({
+            'u': user_input,
+            'k': ai_response
+        })
+        
+        # Trim if too long
+        if len(self.history) > self.max_length:
+            self.history.pop(0)
+    
+    def get_formatted(self):
+        """Get formatted history for API."""
+        formatted = []
+        for turn in self.history:
+            formatted.append({
+                'role': 'user',
+                'content': turn['u']
+            })
+            formatted.append({
+                'role': 'assistant',
+                'content': turn['k']
+            })
+        return formatted
+    
+    def clear(self):
+        """Clear history."""
+        self.history = []
+
+# Usage
+history = ConversationHistory(max_length=10)
+history.add("Hola", "Hola Rosario, ¿cómo está?")
+history.add("Abre Netflix", "Abriendo Netflix para ti.")
+
+formatted = history.get_formatted()
+print(f"History length: {len(formatted)} messages")
+```
+
+```python Advanced History
+import json
+from datetime import datetime
+
+class ConversationManager:
+    def __init__(self, max_history=10, save_file=None):
+        self.max_history = max_history
+        self.save_file = save_file
+        self.history = []
+        
+        if save_file and os.path.exists(save_file):
+            self.load()
+    
+    def add(self, user_msg, ai_msg, metadata=None):
+        """Add with metadata."""
+        entry = {
+            'timestamp': datetime.now().isoformat(),
+            'user': user_msg,
+            'assistant': ai_msg,
+            'metadata': metadata or {}
+        }
+        self.history.append(entry)
+        
+        # Trim
+        if len(self.history) > self.max_history:
+            self.history.pop(0)
+        
+        # Auto-save
+        if self.save_file:
+            self.save()
+    
+    def save(self):
+        """Save to file."""
+        with open(self.save_file, 'w', encoding='utf-8') as f:
+            json.dump(self.history, f, indent=2, ensure_ascii=False)
+    
+    def load(self):
+        """Load from file."""
+        with open(self.save_file, 'r', encoding='utf-8') as f:
+            self.history = json.load(f)
+    
+    def get_recent(self, n=5):
+        """Get last N entries."""
+        return self.history[-n:]
+
+# Usage
+manager = ConversationManager(
+    max_history=20,
+    save_file='conversation_history.json'
+)
+
+manager.add(
+    "Abre Netflix",
+    "Abriendo Netflix",
+    metadata={'app_opened': 'netflix', 'success': True}
+)
+```
+</CodeGroup>
+
+---
+
+## Error Handling
+
+<AccordionGroup>
+  <Accordion title="Network Errors">
+    ```python
+    import requests
+    from requests.exceptions import Timeout, ConnectionError
+    
+    def safe_roku_command(ip, endpoint, retries=3):
+        """Execute Roku command with retry logic."""
+        for attempt in range(retries):
+            try:
+                url = f"http://{ip}:8060/{endpoint}"
+                response = requests.post(url, timeout=5)
+                return True
+            except Timeout:
+                print(f"Timeout on attempt {attempt + 1}")
+            except ConnectionError:
+                print(f"Connection failed on attempt {attempt + 1}")
+            except Exception as e:
+                print(f"Unexpected error: {e}")
+        
+        return False
+    ```
+  </Accordion>
+  
+  <Accordion title="Audio Errors">
+    ```python
+    import pygame
+    from gtts import gTTS
+    
+    def safe_speak(text):
+        """TTS with error handling."""
+        try:
+            tts = gTTS(text=text, lang='es')
+            tts.save('temp.mp3')
+            
+            pygame.mixer.init()
+            pygame.mixer.music.load('temp.mp3')
+            pygame.mixer.music.play()
+            
+            while pygame.mixer.music.get_busy():
+                time.sleep(0.1)
+                
+        except ImportError:
+            print("gTTS or pygame not installed")
+        except Exception as e:
+            print(f"TTS error: {e}")
+        finally:
+            try:
+                pygame.mixer.music.unload()
+                if os.path.exists('temp.mp3'):
+                    os.remove('temp.mp3')
+            except:
+                pass
+    ```
+  </Accordion>
+  
+  <Accordion title="Device Discovery">
+    ```python
+    def safe_network_scan(timeout=2.0):
+        """Network scan with error handling."""
+        devices = []
+        
+        try:
+            # Try to get local IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(timeout)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            
+            prefix = ".".join(local_ip.split(".")[:-1])
+            
+            # Scan network
+            for i in range(1, 255):
+                ip = f"{prefix}.{i}"
+                device = verificar_roku_por_info(ip)
+                if device:
+                    devices.append(device)
+                    
+        except socket.timeout:
+            print("Network timeout during scan")
+        except socket.error as e:
+            print(f"Socket error: {e}")
+        except Exception as e:
+            print(f"Scan error: {e}")
+        
+        return devices
+    ```
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Common Patterns
+
+<CardGroup cols={2}>
+  <Card title="Device Control" icon="tv">
+    ```python
+    # Complete device control
+    devices = escanear_red_tvs()
+    if devices:
+        ip = devices[0]['ip']
+        ejecutar_busqueda_roku(
+            ip, "netflix", "stranger things"
+        )
+    ```
+  </Card>
+  
+  <Card title="Voice Output" icon="volume-high">
+    ```python
+    # Clean and speak response
+    response = "/*app(netflix)*/ Listo!"
+    clean = remove_command_tags(response)
+    hablar_local(clean)
+    ```
+  </Card>
+  
+  <Card title="Network Discovery" icon="wifi">
+    ```python
+    # Find and cache devices
+    devices = escanear_red_tvs()
+    if devices:
+        primary_ip = devices[0]['ip']
+        # Use primary_ip for commands
+    ```
+  </Card>
+  
+  <Card title="Command Processing" icon="terminal">
+    ```python
+    # Parse and execute commands
+    commands = parse_commands(text)
+    for cmd in commands:
+        if cmd['type'] == 'app':
+            launch_app(cmd['value'])
+    ```
+  </Card>
+</CardGroup>

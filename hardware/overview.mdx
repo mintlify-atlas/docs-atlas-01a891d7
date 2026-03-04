@@ -1,0 +1,109 @@
+---
+title: 'Hardware Projects Overview'
+description: 'Colección de proyectos de hardware y prototipos Arduino del Grupo de Anda'
+---
+
+## Introducción
+
+Esta sección documenta los proyectos de hardware y prototipos con Arduino desarrollados por el Grupo de Anda. Nuestros proyectos se centran en soluciones prácticas y creativas utilizando microcontroladores y componentes electrónicos.
+
+## Proyectos Disponibles
+
+<CardGroup cols={2}>
+  <Card title="Duende Servo Control" icon="robot" href="/hardware/duende-servo">
+    Sistema de control de servo con movimientos naturales y modos de operación
+  </Card>
+  <Card title="Lámpara Solar" icon="sun" href="/hardware/arduino-projects#lampara-solar">
+    Sistema de temporización para control de lámpara solar con ciclos automáticos
+  </Card>
+</CardGroup>
+
+## Plataformas Utilizadas
+
+### Arduino Nano
+
+La mayoría de nuestros proyectos utilizan el Arduino Nano por sus características:
+
+- **Microcontrolador**: ATmega328P
+- **Voltaje de operación**: 5V
+- **Pines digitales I/O**: 14 (6 PWM)
+- **Pines analógicos**: 8
+- **Memoria Flash**: 32KB
+- **SRAM**: 2KB
+- **EEPROM**: 1KB
+- **Tamaño compacto**: Ideal para proyectos embebidos
+
+<Note>
+  El Arduino Nano es pin-compatible con el Arduino Uno pero en un factor de forma más pequeño, perfecto para proyectos permanentes.
+</Note>
+
+## Herramientas y Recursos
+
+<Steps>
+  <Step title="Arduino IDE">
+    Descarga e instala el [Arduino IDE](https://www.arduino.cc/en/software) para programar los microcontroladores.
+  </Step>
+  
+  <Step title="Librería Servo">
+    La mayoría de proyectos usan la librería Servo estándar incluida en Arduino IDE.
+  </Step>
+  
+  <Step title="Protoboard y Componentes">
+    Componentes básicos: resistencias, LEDs, servomotores, cables jumper.
+  </Step>
+  
+  <Step title="Fuente de Alimentación">
+    Considera la corriente requerida por servos y otros actuadores (típicamente 5V, 1-2A).
+  </Step>
+</Steps>
+
+## Buenas Prácticas
+
+<Warning>
+  **Importante**: Siempre desconecta la alimentación antes de modificar el circuito para evitar daños a los componentes.
+</Warning>
+
+### Programación
+
+- Usa nombres descriptivos para variables y constantes
+- Documenta los pines utilizados al inicio del código
+- Implementa máquinas de estado para comportamientos complejos
+- Valida las lecturas de serial antes de procesarlas
+
+### Hardware
+
+- Verifica las conexiones antes de alimentar el circuito
+- Usa resistencias limitadoras para LEDs
+- Conecta el GND común entre todos los componentes
+- Alimenta servos desde fuente externa si usas múltiples motores
+
+## Estructura de Código Típica
+
+```cpp
+// Definición de pines
+const int PIN_DISPOSITIVO = 9;
+
+// Variables globales
+unsigned long tiempoInicio = 0;
+
+void setup() {
+  // Inicialización de pines y comunicación serial
+  Serial.begin(9600);
+  pinMode(PIN_DISPOSITIVO, OUTPUT);
+}
+
+void loop() {
+  // Lógica principal del programa
+}
+```
+
+## Próximos Pasos
+
+<CardGroup cols={2}>
+  <Card title="Arduino Projects" icon="microchip" href="/hardware/arduino-projects">
+    Explora todos los proyectos Arduino en detalle
+  </Card>
+  <Card title="Duende Servo" icon="gears" href="/hardware/duende-servo">
+    Proyecto destacado: Sistema de control de servo inteligente
+  </Card>
+</CardGroup>

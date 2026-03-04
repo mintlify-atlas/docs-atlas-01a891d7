@@ -1,0 +1,395 @@
+---
+title: 'Duende Servo Control'
+description: 'Sistema inteligente de control de servo con movimientos naturales y múltiples modos de operación'
+icon: 'robot'
+---
+
+## Descripción del Proyecto
+
+El **Duende Servo Control** es un sistema avanzado de control de servomotor que simula movimientos naturales de una cabeza o mecanismo similar. El proyecto implementa una máquina de estados con tres modos de operación controlables por comandos seriales.
+
+<Info>
+  Este proyecto es ideal para crear personajes animatrónicos, displays interactivos o cualquier aplicación que requiera movimientos de servo realistas y controlables.
+</Info>
+
+## Hardware Requerido
+
+- **Arduino Nano** (o compatible)
+- **Servo motor** (SG90, MG90S o similar)
+- **Fuente de alimentación**: 5V, 1-2A (dependiendo del servo)
+- **Cables jumper** para conexiones
+- **Protoboard** (opcional, para prototipado)
+
+<Warning>
+  **Importante**: Alimenta el servo desde una fuente externa o el pin VIN del Arduino si usas USB. No alimentes servos grandes directamente desde el pin 5V del Arduino para evitar sobrecarga.
+</Warning>
+
+## Configuración de Hardware
+
+### Diagrama de Conexión
+
+```
+Arduino Nano          Servo Motor
+┌─────────────┐      ┌──────────┐
+│             │      │          │
+│          D9 ├──────┤ Signal   │ (Cable naranja/amarillo)
+│             │      │          │
+│          5V ├──────┤ VCC      │ (Cable rojo)
+│             │      │          │
+│         GND ├──────┤ GND      │ (Cable marrón/negro)
+│             │      │          │
+└─────────────┘      └──────────┘
+```
+
+### Tabla de Pines
+
+| Pin Arduino | Componente | Descripción |
+|-------------|------------|-------------|
+| D9 (PWM)    | Servo Signal | Control PWM del servo |
+| 5V/VIN      | Servo VCC    | Alimentación positiva |
+| GND         | Servo GND    | Tierra común |
+
+<Tip>
+  El pin D9 es un pin PWM, necesario para controlar servos. Otros pines PWM disponibles en Arduino Nano: 3, 5, 6, 10, 11.
+</Tip>
+
+## Características del Sistema
+
+### Modos de Operación
+
+<CardGroup cols={3}>
+  <Card title="Modo VIDA" icon="heart-pulse">
+    Movimientos naturales aleatorios cada 6 segundos. Rango exagerado de ±60 grados.
+  </Card>
+  <Card title="Modo NO" icon="ban">
+    Movimiento rápido de negación continua (40° ↔ 140°).
+  </Card>
+  <Card title="Modo CENTRO" icon="circle-dot">
+    Servo en posición central (90°) sin movimiento.
+  </Card>
+</CardGroup>
+
+### Especificaciones Técnicas
+
+- **Rango de movimiento**: 30° a 150° (±60° desde el centro)
+- **Intervalo modo VIDA**: 6 segundos entre movimientos
+- **Velocidad de movimiento**: 20ms por grado (suave y natural)
+- **Comunicación serial**: 9600 baudios
+- **Control**: Comandos de texto via Serial Monitor
+
+## Código Fuente
+
+<CodeGroup>
+
+```cpp duende_v1.ino
+#include <Servo.h>
+
+Servo cabezaServo;
+
+const int PIN_SERVO = 9;
+unsigned long tiempoUltimaAccion = 0;
+const long INTERVALO_VIDA = 6000; 
+
+enum Estado { CENTRO, VIDA, MODO_NO };
+Estado estadoActual = VIDA; 
+
+void setup() {
+  Serial.begin(9600);
+  cabezaServo.attach(PIN_SERVO);
+  cabezaServo.write(90); 
+  delay(500);
+  tiempoUltimaAccion = millis();
+  Serial.println("Duende listo. Modo VIDA (Exagerado 60 deg) activo.");
+}
+
+// He mejorado el movimiento NO para que sea fluido pero rápido
+void movimientoNo() {
+  cabezaServo.write(40);  delay(250); // Un poco más rápido que el natural
+  cabezaServo.write(140); delay(250);
+}
+
+void movimientoNatural() {
+  // RANGO EXAGERADO: 90 +/- 60 grados (va de 30 a 150)
+  int randomOffset = random(-60, 61); 
+  int objetivo = 90 + randomOffset;
+  
+  int posActual = cabezaServo.read();
+  
+  // IDA: Hacia el punto aleatorio
+  if (posActual < objetivo) {
+    for (int p = posActual; p <= objetivo; p++) {
+      cabezaServo.write(p);
+      delay(20); // Un poco más ágil para cubrir los 60 grados
+    }
+  } else {
+    for (int p = posActual; p >= objetivo; p--) {
+      cabezaServo.write(p);
+      delay(20);
+    }
+  }
+  
+  delay(1000); // Se queda observando
+  
+  // VUELTA: Regreso al centro obligatorio
+  posActual = cabezaServo.read();
+  if (posActual < 90) {
+    for (int p = posActual; p <= 90; p++) {
+      cabezaServo.write(p);
+      delay(20);
+    }
+  } else {
+    for (int p = posActual; p >= 90; p--) {
+      cabezaServo.write(p);
+      delay(20);
+    }
+  }
+  
+  tiempoUltimaAccion = millis(); 
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    String comando = Serial.readStringUntil('\n');
+    comando.trim();
+    comando.toLowerCase();
+
+    if (comando == "vida") {
+      estadoActual = VIDA;
+      Serial.println("-> Modo VIDA.");
+      tiempoUltimaAccion = millis();
+    } 
+    else if (comando == "no") {
+      estadoActual = MODO_NO;
+      Serial.println("-> Modo NO.");
+    } 
+    else if (comando == "centro") {
+      estadoActual = CENTRO;
+      // Regreso suave al centro antes de apagar
+      int pAct = cabezaServo.read();
+      if(pAct < 90) { for(int i=pAct; i<=90; i++) { cabezaServo.write(i); delay(15); } }
+      else { for(int i=pAct; i>=90; i--) { cabezaServo.write(i); delay(15); } }
+      Serial.println("-> Modo CENTRO.");
+    }
+  }
+
+  switch (estadoActual) {
+    case VIDA:
+      if (millis() - tiempoUltimaAccion > INTERVALO_VIDA) {
+        movimientoNatural();
+      }
+      break;
+    case MODO_NO:
+      movimientoNo();
+      break;
+    case CENTRO:
+      break;
+  }
+}
+```
+
+</CodeGroup>
+
+## Guía de Uso
+
+<Steps>
+  <Step title="Cargar el código">
+    Abre el Arduino IDE, copia el código y cárgalo en tu Arduino Nano.
+  </Step>
+  
+  <Step title="Abrir Serial Monitor">
+    Ve a `Herramientas > Monitor Serial` o presiona `Ctrl+Shift+M`. Configura a 9600 baudios.
+  </Step>
+  
+  <Step title="Probar comandos">
+    Escribe los comandos y presiona Enter:
+    - `vida` - Activa movimientos naturales
+    - `no` - Activa movimiento de negación
+    - `centro` - Detiene el movimiento
+  </Step>
+  
+  <Step title="Observar comportamiento">
+    El servo responderá inmediatamente a tus comandos. En modo VIDA, esperará 6 segundos entre movimientos.
+  </Step>
+</Steps>
+
+### Comandos Disponibles
+
+| Comando | Descripción | Comportamiento |
+|---------|-------------|----------------|
+| `vida` | Modo natural | Movimientos aleatorios cada 6s en rango ±60° |
+| `no` | Modo negación | Oscilación rápida continua 40° ↔ 140° |
+| `centro` | Modo reposo | Retorna suavemente a 90° y se detiene |
+
+<Note>
+  Los comandos no distinguen entre mayúsculas y minúsculas. Puedes escribir "VIDA", "vida" o "ViDa".
+</Note>
+
+## Análisis del Código
+
+### Máquina de Estados
+
+El proyecto usa un `enum` para definir estados claros:
+
+```cpp
+enum Estado { CENTRO, VIDA, MODO_NO };
+Estado estadoActual = VIDA;
+```
+
+Esto hace el código más legible y mantenible que usar números o booleanos.
+
+### Movimiento Natural (codigo.ino:27-64)
+
+La función `movimientoNatural()` implementa un algoritmo de dos fases:
+
+<AccordionGroup>
+  <Accordion title="Fase 1: IDA - Movimiento aleatorio">
+    ```cpp
+    int randomOffset = random(-60, 61); 
+    int objetivo = 90 + randomOffset;
+    ```
+    
+    - Genera un offset aleatorio entre -60° y +60°
+    - El servo se mueve suavemente hasta el objetivo
+    - Pausa de 1 segundo en la posición ("observando")
+  </Accordion>
+
+  <Accordion title="Fase 2: VUELTA - Retorno al centro">
+    ```cpp
+    // VUELTA: Regreso al centro obligatorio
+    posActual = cabezaServo.read();
+    if (posActual < 90) {
+      for (int p = posActual; p <= 90; p++) {
+        cabezaServo.write(p);
+        delay(20);
+      }
+    }
+    ```
+    
+    - Siempre regresa a la posición central (90°)
+    - Movimiento suave de 20ms por grado
+    - Resetea el temporizador para el próximo ciclo
+  </Accordion>
+</AccordionGroup>
+
+### Movimiento de Negación (codigo.ino:22-25)
+
+```cpp
+void movimientoNo() {
+  cabezaServo.write(40);  delay(250);
+  cabezaServo.write(140); delay(250);
+}
+```
+
+<Tip>
+  Este movimiento es deliberadamente rápido (250ms) para dar un efecto dinámico de negación. Se ejecuta continuamente mientras está en modo NO.
+</Tip>
+
+### Control Serial (codigo.ino:67-89)
+
+El sistema lee comandos del Serial Monitor:
+
+1. Lee la cadena hasta encontrar nueva línea
+2. Elimina espacios con `trim()`
+3. Convierte a minúsculas con `toLowerCase()`
+4. Compara y cambia el estado correspondiente
+
+## Personalización
+
+### Ajustar el Rango de Movimiento
+
+```cpp
+// Cambiar de ±60° a ±45° (más sutil)
+int randomOffset = random(-45, 46); 
+```
+
+### Cambiar la Velocidad
+
+```cpp
+// Más lento: aumentar el delay
+delay(30); // En lugar de delay(20)
+
+// Más rápido: disminuir el delay
+delay(10); // En lugar de delay(20)
+```
+
+### Ajustar el Intervalo entre Movimientos
+
+```cpp
+// 10 segundos entre movimientos
+const long INTERVALO_VIDA = 10000;
+
+// 3 segundos entre movimientos  
+const long INTERVALO_VIDA = 3000;
+```
+
+<Warning>
+  Delays muy cortos (< 15ms) pueden causar movimientos entrecortados. El mínimo recomendado es 15-20ms por grado.
+</Warning>
+
+## Mejoras Futuras
+
+<CardGroup cols={2}>
+  <Card title="Control Remoto" icon="wifi">
+    Agregar módulo Bluetooth (HC-05) o WiFi (ESP8266) para control inalámbrico
+  </Card>
+  <Card title="Sensor de Proximidad" icon="sensor">
+    Activar movimientos automáticamente cuando detecte personas cercanas
+  </Card>
+  <Card title="Múltiples Servos" icon="gears">
+    Expandir a 2-3 servos para movimientos más complejos (cabeza + brazos)
+  </Card>
+  <Card title="Modos Adicionales" icon="list">
+    Agregar patrones de movimiento: asiento, duda, búsqueda, etc.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="El servo vibra o hace ruido">
+    **Causas posibles:**
+    - Alimentación insuficiente (usa fuente externa)
+    - Servo defectuoso o desgastado
+    - Posiciones fuera del rango del servo (verificar 0-180°)
+    
+    **Solución**: Alimenta el servo desde VIN con fuente externa de 5V/1A o más.
+  </Accordion>
+
+  <Accordion title="Movimientos entrecortados">
+    **Causa**: Delay demasiado corto entre pasos.
+    
+    **Solución**: Aumenta el `delay()` en las funciones de movimiento a 20-30ms.
+  </Accordion>
+
+  <Accordion title="No responde a comandos serial">
+    **Verificar:**
+    - Baudios configurados a 9600
+    - Cable USB conectado correctamente
+    - Puerto COM correcto en Arduino IDE
+    - Enviar comando con Enter (new line)
+  </Accordion>
+
+  <Accordion title="Servo no se mueve">
+    **Verificar:**
+    - Conexión del cable señal al pin D9
+    - Alimentación 5V y GND conectados
+    - Servo funcional (probar con sketch de ejemplo)
+  </Accordion>
+</AccordionGroup>
+
+## Recursos
+
+<CardGroup cols={2}>
+  <Card title="Servo Library" icon="book" href="https://www.arduino.cc/reference/en/libraries/servo/">
+    Documentación oficial de la librería Servo
+  </Card>
+  <Card title="Arduino Nano Pinout" icon="microchip" href="https://docs.arduino.cc/hardware/nano/">
+    Diagrama de pines y especificaciones
+  </Card>
+  <Card title="SG90 Datasheet" icon="file-pdf" href="http://www.ee.ic.ac.uk/pcheung/teaching/DE1_EE/stores/sg90_datasheet.pdf">
+    Especificaciones técnicas del servo SG90
+  </Card>
+  <Card title="Arduino Serial" icon="terminal" href="https://www.arduino.cc/reference/en/language/functions/communication/serial/">
+    Referencia de comunicación serial
+  </Card>
+</CardGroup>

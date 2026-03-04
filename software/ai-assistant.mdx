@@ -1,0 +1,452 @@
+---
+title: 'AI Voice Assistant (Kamutini)'
+description: 'Intelligent voice assistant with Roku TV control, Google Gemini integration, and personalized interactions'
+icon: 'microphone'
+---
+
+## Overview
+
+Kamutini is an advanced AI voice assistant built in Python that combines Google Gemini AI with smart home control capabilities. Designed specifically for elderly users (like Rosario, 66), it features natural language processing, text-to-speech, web search, and direct Roku TV control.
+
+<Note>
+**Project Name**: asistantkamutini.py  
+**Created By**: Daniel Tecnologi  
+**Location**: `~/workspace/source/proyectos/ai creator/asistantkamutini.py`
+</Note>
+
+## Core Features
+
+- **Google Gemini AI Integration**: Uses gemini-1.5-flash model for natural conversations
+- **Roku TV Control**: Direct API integration for app launching, searching, and control
+- **Voice Synthesis**: Spanish text-to-speech using gTTS and pygame
+- **Web Search**: Google Custom Search API for real-time information
+- **Conversational Memory**: Maintains context across multiple interactions
+- **Personalized Personality**: Religious, warm, and respectful tone for elderly users
+
+## System Architecture
+
+### API Configuration
+
+```python
+# Google Gemini API Configuration
+API_KEY_GEMINI = ""  # Your Gemini API key
+GEMINI_MODEL = "gemini-1.5-flash"
+
+# Generation Parameters
+TEMP = 0.6            # Temperature for randomness
+TOP_K = 40            # Top-K sampling
+TOP_P = 0.9           # Nucleus sampling
+MAX_TOKENS = 250      # Maximum response length
+
+# Google Custom Search
+API_KEY_GOOGLE_SEARCH = ""
+SEARCH_ENGINE_ID = ""
+
+# Network Configuration
+TARGET_IP = "192.168.1.8"  # Roku TV IP address
+MAX_HISTORIAL = 10          # Conversation memory limit
+```
+
+### Roku TV Integration
+
+The assistant can control Roku devices via HTTP API:
+
+```python
+ROKU_APPS = {
+    "netflix": "12",
+    "youtube": "837",
+    "prime": "13",
+    "disney": "291097",
+    "spotify": "199",
+    "hbo": "61322",
+    "plex": "3847",
+    "television": "tvinput.dtv"
+}
+
+def enviar_comando_roku(ip, endpoint, metodo="POST"):
+    url = f"http://{ip}:8060/{endpoint}"
+    try:
+        if metodo == "POST":
+            requests.post(url, timeout=5)
+        else:
+            requests.get(url, timeout=5)
+        return True
+    except:
+        return False
+```
+
+### Network Discovery
+
+Automatic Roku device detection on the local network:
+
+```python
+def verificar_roku_por_info(ip):
+    url = f"http://{ip}:8060/query/device-info"
+    try:
+        response = requests.get(url, timeout=1.5)
+        if response.status_code == 200 and "<device-info>" in response.text:
+            model_match = re.search(r'<model-name>(.*?)</model-name>', response.text)
+            model_name = model_match.group(1) if model_match else "Roku"
+            return {"ip": ip, "tipo": f"Roku ({model_name})"}
+    except:
+        pass
+    return None
+```
+
+## KamutiniEngine Class
+
+### Initialization
+
+```python
+class KamutiniEngine:
+    def __init__(self):
+        print(f"🚀 Kamutini Engine v13.0 (Cloud Gemini API)...")
+        self.dispositivos_tv = escanear_red_tvs()
+        self.active_ip = self.dispositivos_tv[0]['ip'] if self.dispositivos_tv else TARGET_IP
+        self.app_abierta = "el Menú de Inicio"
+        
+        pygame.mixer.init()
+        self.historial = []
+```
+
+### Gemini API Processing
+
+<CodeGroup>
+```python Request Structure
+def procesar_gemini(self, consulta):
+    ahora = datetime.now()
+    self.app_abierta = obtener_app_actual(self.active_ip)
+    
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={API_KEY_GEMINI}"
+    
+    # Build conversation history
+    contents = []
+    for h in self.historial:
+        contents.append({"role": "user", "parts": [{"text": h['u']}]})
+        contents.append({"role": "model", "parts": [{"text": h['k']}]})
+    
+    contents.append({"role": "user", "parts": [{"text": consulta}]})
+    
+    payload = {
+        "contents": contents,
+        "systemInstruction": system_instruction,
+        "generationConfig": {
+            "temperature": TEMP,
+            "topK": TOP_K,
+            "topP": TOP_P,
+            "maxOutputTokens": MAX_TOKENS
+        }
+    }
+    
+    response = requests.post(url, json=payload, timeout=15)
+    return response.json()['candidates'][0]['content']['parts'][0]['text'].strip()
+```
+
+```python System Personality
+SYSTEM_BASE = """Eres el compañero de casa de Rosario (66 años, de Tepatitlán).
+Tu trato debe ser sumamente educado, cálido y devoto.
+
+REGLAS CRÍTICAS:
+1. SOLO genera el diálogo de respuesta y las etiquetas técnicas.
+2. NUNCA menciones términos técnicos (IP, red, comandos) en tu habla.
+3. Sé RESOLUTIVO: Si Rosario pide investigar o buscar, hazlo directamente.
+4. Si Rosario saluda, responde con fervor religioso.
+5. CREADOR: Daniel Tecnologi.
+
+### ETIQUETAS DISPONIBLES ###
+- /*app(nombre)*/: Abrir una aplicación.
+- /*search(app, texto)*/: Buscar contenido en una app.
+- /*home*/: Ir al inicio o cerrar la app actual.
+- /*power*/: Apagar la televisión.
+- /*resultados(tema)*/: Buscar información en Google.
+- /*salir*/: Despedida final.
+"""
+```
+</CodeGroup>
+
+### Tag Processing System
+
+The assistant uses special tags to trigger actions:
+
+```python
+def responder(self, consulta):
+    respuesta_cruda = self.procesar_gemini(consulta)
+    
+    tags = re.findall(r'/\*(.*?)\*/', respuesta_cruda)
+    
+    for tag in tags:
+        if "search(" in tag:
+            search_match = re.search(r'search\((.*?), (.*?)\)', tag)
+            if search_match:
+                app = search_match.group(1).strip().lower()
+                query = search_match.group(2).strip()
+                ejecutar_busqueda_roku(self.active_ip, app, query)
+        
+        elif "resultados(" in tag:
+            query_google = re.search(r'resultados\((.*?)\)', tag).group(1)
+            info = google_search_custom(query_google)
+            respuesta_cruda += info
+        
+        elif "app(" in tag:
+            app_name = re.search(r'app\((.*?)\)', tag).group(1).lower()
+            enviar_comando_roku(self.active_ip, 
+                              f"launch/{ROKU_APPS.get(app_name, '837')}")
+        
+        elif "home" in tag:
+            enviar_comando_roku(self.active_ip, "keypress/Home")
+        
+        elif "power" in tag:
+            enviar_comando_roku(self.active_ip, "keypress/PowerOff")
+    
+    respuesta_final = re.sub(r'/\*.*?\*/', '', respuesta_cruda).strip()
+    self.historial.append({"u": consulta, "k": respuesta_final})
+    
+    return respuesta_final, "/*salir*/" in respuesta_cruda.lower()
+```
+
+### Voice Synthesis
+
+```python
+def hablar_local(self, texto):
+    texto_limpio = self.limpiar_texto_para_audio(texto)
+    if not texto_limpio: return
+
+    try:
+        tts = gTTS(text=texto_limpio, lang='es', slow=False)
+        filename = "temp_voice.mp3"
+        tts.save(filename)
+        pygame.mixer.music.load(filename)
+        pygame.mixer.music.play()
+        while pygame.mixer.music.get_busy(): 
+            time.sleep(0.1)
+        pygame.mixer.music.unload()
+        if os.path.exists(filename): 
+            os.remove(filename)
+    except Exception as e: 
+        print(f"⚠️ Error audio: {e}")
+
+def limpiar_texto_para_audio(self, texto):
+    texto = re.sub(r'/\*.*?\*/', '', texto)  # Remove tags
+    texto = texto.replace('*', '').replace('#', '').replace('_', ' ')
+    texto = re.sub(r'http\S+', '', texto)  # Remove URLs
+    texto = " ".join(texto.split())
+    return texto
+```
+
+## Installation
+
+### Dependencies
+
+```bash
+pip install requests gtts pygame
+```
+
+<Warning>
+**API Keys Required**: You must configure:
+- Google Gemini API key
+- Google Custom Search API key and Search Engine ID
+</Warning>
+
+### Configuration Steps
+
+<Steps>
+  <Step title="Install Dependencies">
+    Install all required Python packages:
+    ```bash
+    pip install requests gtts pygame
+    ```
+  </Step>
+  
+  <Step title="Configure API Keys">
+    Edit the configuration section in `asistantkamutini.py`:
+    ```python
+    API_KEY_GEMINI = "your-gemini-api-key"
+    API_KEY_GOOGLE_SEARCH = "your-google-api-key"
+    SEARCH_ENGINE_ID = "your-search-engine-id"
+    ```
+  </Step>
+  
+  <Step title="Set Roku TV IP">
+    Find your Roku TV's IP address and configure:
+    ```python
+    TARGET_IP = "192.168.1.8"  # Your Roku TV IP
+    ```
+  </Step>
+  
+  <Step title="Run the Assistant">
+    ```bash
+    python asistantkamutini.py
+    ```
+  </Step>
+</Steps>
+
+## Usage Examples
+
+### Basic Interaction
+
+```bash
+✨ Kamutini v13.0 listo. Usando gemini-1.5-flash vía API.
+
+👤 Rosario: Hola, buenos días
+🤖: Buenos días, Rosario. Que Dios la bendiga en este hermoso día.
+
+👤 Rosario: Busca videos de cocina en YouTube
+🤖: Con mucho gusto, Rosario. Abriendo YouTube para buscar videos de cocina.
+[System launches YouTube and searches for "cocina"]
+
+👤 Rosario: ¿Cuál es el clima hoy?
+🤖: Déjame investigar eso para usted, Rosario.
+[System searches Google and responds with weather information]
+
+👤 Rosario: Apaga la televisión
+🤖: Por supuesto, Rosario. Apagando la televisión.
+[System sends power-off command to Roku TV]
+```
+
+### Command Tags
+
+<Tabs>
+  <Tab title="TV Control">
+    ```
+    User: "Abre Netflix"
+    Tag: /*app(netflix)*/
+    Action: Launches Netflix app on Roku
+    
+    User: "Ve al inicio"
+    Tag: /*home*/
+    Action: Returns to Roku home screen
+    ```
+  </Tab>
+  
+  <Tab title="Search">
+    ```
+    User: "Busca documentales en YouTube"
+    Tag: /*search(youtube, documentales)*/
+    Action: Opens YouTube and searches for content
+    
+    User: "Investiga sobre inteligencia artificial"
+    Tag: /*resultados(inteligencia artificial)*/
+    Action: Google search with results returned to user
+    ```
+  </Tab>
+  
+  <Tab title="Control">
+    ```
+    User: "Apaga la TV"
+    Tag: /*power*/
+    Action: Powers off the Roku TV
+    
+    User: "Adiós"
+    Tag: /*salir*/
+    Action: Exits the assistant
+    ```
+  </Tab>
+</Tabs>
+
+## Advanced Features
+
+### Conversation Memory
+
+The assistant maintains a rolling history of the last 10 interactions:
+
+```python
+self.historial.append({"u": consulta, "k": respuesta_final})
+if len(self.historial) > MAX_HISTORIAL: 
+    self.historial.pop(0)
+```
+
+### Network Scanning
+
+Automatic detection of Roku devices using multithreading:
+
+```python
+def escanear_red_tvs():
+    encontrados = []
+    # First check target IP
+    tv_principal = verificar_roku_por_info(TARGET_IP)
+    if tv_principal:
+        encontrados.append(tv_principal)
+        return encontrados
+    
+    # Scan entire subnet
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    ip_local = s.getsockname()[0]
+    s.close()
+    prefijo = ".".join(ip_local.split(".")[:-1])
+    
+    hilos = []
+    for i in range(1, 255):
+        t = threading.Thread(target=tarea_escaneo, args=(f"{prefijo}.{i}",))
+        t.daemon = True
+        t.start()
+        hilos.append(t)
+    time.sleep(1.5)
+    
+    return encontrados
+```
+
+### Google Custom Search Integration
+
+```python
+def google_search_custom(query):
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        'key': API_KEY_GOOGLE_SEARCH, 
+        'cx': SEARCH_ENGINE_ID, 
+        'q': query, 
+        'num': 3
+    }
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        if response.status_code == 200:
+            items = response.json().get('items', [])
+            return " Rosario, encontré esto: " + 
+                   " ".join([i.get('snippet') for i in items])
+    except: 
+        pass
+    return " No logré encontrar información en este momento."
+```
+
+## Technical Specifications
+
+<ParamField path="GEMINI_MODEL" type="string" default="gemini-1.5-flash">
+  Google Gemini model version (smaller than 2.0 series)
+</ParamField>
+
+<ParamField path="TEMP" type="float" default="0.6">
+  Temperature parameter for response randomness (0.0-1.0)
+</ParamField>
+
+<ParamField path="TOP_K" type="integer" default="40">
+  Top-K sampling parameter for token selection
+</ParamField>
+
+<ParamField path="TOP_P" type="float" default="0.9">
+  Nucleus sampling parameter (0.0-1.0)
+</ParamField>
+
+<ParamField path="MAX_TOKENS" type="integer" default="250">
+  Maximum tokens per AI response
+</ParamField>
+
+<ParamField path="MAX_HISTORIAL" type="integer" default="10">
+  Number of conversation turns to remember
+</ParamField>
+
+## File Reference
+
+**Source**: `/home/daytona/workspace/source/proyectos/ai creator/asistantkamutini.py:1`  
+**Version**: v13.0  
+**Lines of Code**: 280
+
+## Related Projects
+
+<CardGroup cols={2}>
+  <Card title="Wake Word Detection" icon="ear-listen" href="./wake-word-detection">
+    Voice activation system for hands-free control
+  </Card>
+  <Card title="Intent Classification" icon="brain" href="./intent-classification">
+    ML model for understanding user intents
+  </Card>
+</CardGroup>

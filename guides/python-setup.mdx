@@ -1,0 +1,164 @@
+---
+title: Python Installation and Setup
+description: Complete guide to installing Python for Grupo de Anda projects
+---
+
+## Overview
+
+Grupo de Anda projects are designed to work with **Python 3.11** and **Python 3.13**. This guide will walk you through installing Python and Visual Studio Code for both Windows and Linux (Ubuntu) systems.
+
+<Note>
+The project has been specifically tested with Python 3.11.14 and Python 3.13. Using other versions may lead to compatibility issues.
+</Note>
+
+## Supported Python Versions
+
+- **Python 3.11.14** (Recommended)
+- **Python 3.13**
+
+## Installation Steps
+
+<Steps>
+  <Step title="Download Python">
+    Visit the official Python website at [https://www.python.org/](https://www.python.org/)
+    
+    Download **Python 3.11.14** for your operating system.
+  </Step>
+
+  <Step title="Install Python">
+    ### Windows
+    
+    Run the installer and **make sure to check** the following options:
+    - "Add Python to PATH"
+    - "Install pip"
+    
+    ### Linux (Ubuntu)
+    
+    Python usually comes pre-installed on Ubuntu. To check your version:
+    
+    ```bash
+    python3 --version
+    ```
+    
+    If you need to install Python 3.11:
+    
+    ```bash
+    sudo apt update
+    sudo apt install python3.11 python3.11-venv python3-pip
+    ```
+    
+    <Warning>
+    On Ubuntu, the system uses Python internally. **Never modify the system Python installation directly** as it can break your operating system. Always use virtual environments (see [Virtual Environments guide](/guides/virtual-environments)).
+    </Warning>
+  </Step>
+
+  <Step title="Verify Installation">
+    Open a terminal or command prompt and verify Python is installed:
+    
+    ```bash
+    python --version
+    ```
+    
+    Or on Linux:
+    
+    ```bash
+    python3 --version
+    ```
+    
+    You should see the Python version number displayed.
+  </Step>
+
+  <Step title="Install Visual Studio Code">
+    Download VS Code from [https://code.visualstudio.com/download](https://code.visualstudio.com/download)
+    
+    For detailed installation instructions for both Python and VS Code, watch this helpful video tutorial:
+    
+    [Python & VS Code Setup Tutorial](https://youtu.be/-IyA_Yvs8IQ?si=TLsaDUCOuN6ZFmnr)
+  </Step>
+</Steps>
+
+## VS Code Python Setup
+
+After installing VS Code, you'll need to configure it for Python development:
+
+<Steps>
+  <Step title="Install Python Extension">
+    1. Open VS Code
+    2. Go to Extensions (Ctrl+Shift+X)
+    3. Search for "Python"
+    4. Install the official Python extension by Microsoft
+  </Step>
+
+  <Step title="Select Python Interpreter">
+    1. Press `Ctrl+Shift+P` to open the command palette
+    2. Type "Python: Select Interpreter"
+    3. Choose your installed Python version (3.11 or 3.13)
+  </Step>
+</Steps>
+
+## Running Python Code
+
+Once everything is set up, you can run Python code in VS Code:
+
+- **Press F5** to run in debug mode
+- **Right-click** and select "Run Python File in Terminal"
+- Use the **Run button** in the top-right corner
+
+<Info>
+Depending on the program, it may run in the terminal or open a graphical user interface (GUI).
+</Info>
+
+## Platform Considerations
+
+### Ubuntu-Specific Notes
+
+<Warning>
+This codebase was designed with Ubuntu in mind. Ubuntu's system integration with Python means you **must use virtual environments** to avoid breaking system functionality.
+</Warning>
+
+Key Ubuntu considerations:
+- System uses Python internally for core functionality
+- Installing or updating libraries system-wide can break Ubuntu
+- **Always use virtual environments** (see next guide)
+- The `python3-venv` package is required for virtual environments
+
+### Windows Notes
+
+- Ensure Python is added to PATH during installation
+- You may need to use `python` instead of `python3` in commands
+- Virtual environments are recommended but not critical for system stability
+
+## Next Steps
+
+After installing Python, proceed to:
+
+1. [Set up a virtual environment](/guides/virtual-environments) (Critical for Ubuntu users)
+2. [Install project dependencies](/guides/dependencies)
+3. [Set up Arduino hardware](/guides/arduino-setup) (if working with hardware projects)
+
+## Troubleshooting
+
+<Accordion title="'python' is not recognized as a command">
+  **Windows**: Python wasn't added to PATH during installation. Reinstall Python and check "Add Python to PATH".
+  
+  **Linux**: Use `python3` instead of `python`.
+</Accordion>
+
+<Accordion title="Permission denied on Linux">
+  Don't use `sudo` with pip. Instead, use a virtual environment or install with the `--user` flag:
+  
+  ```bash
+  pip3 install --user package-name
+  ```
+</Accordion>
+
+<Accordion title="Multiple Python versions installed">
+  You can specify the version explicitly:
+  
+  ```bash
+  python3.11 --version
+  python3.13 --version
+  ```
+  
+  Set your preferred version in VS Code using "Python: Select Interpreter".
+</Accordion>

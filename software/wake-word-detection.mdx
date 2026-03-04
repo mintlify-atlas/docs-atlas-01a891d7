@@ -1,0 +1,500 @@
+---
+title: 'Wake Word Detection'
+description: 'LSTM-based neural network for real-time wake word detection using MFCC features'
+icon: 'ear-listen'
+---
+
+## Overview
+
+A machine learning system that detects a specific "wake word" in audio streams using LSTM neural networks and MFCC (Mel-Frequency Cepstral Coefficients) feature extraction. Built with TensorFlow/Keras for real-time audio processing.
+
+<Note>
+**Project Name**: entrenar_wake.py  
+**Location**: `~/workspace/source/proyectos/make word/entrenar_wake.py`  
+**Model Type**: LSTM-based binary classifier
+</Note>
+
+## System Architecture
+
+### Audio Configuration
+
+```python
+# Path Configuration
+BASE_PATH = "/home/daniel-de-anda/Escritorio/proyectos/make word"
+PATH_POSITIVE = os.path.join(BASE_PATH, "audios")
+PATH_NEGATIVE = os.path.join(BASE_PATH, "audios bad")
+MODEL_SAVE_PATH = os.path.join(BASE_PATH, "wake_word_model.h5")
+
+# Audio Parameters
+SAMPLE_RATE = 16000  # Hz
+DURATION = 5         # seconds (unified duration)
+CHANNELS = 1         # Mono audio
+N_MFCC = 13          # Number of MFCC coefficients
+```
+
+### Feature Extraction Pipeline
+
+The system uses Mel-Frequency Cepstral Coefficients (MFCC) to convert raw audio into machine learning features:
+
+```python
+def extract_features(audio_data):
+    """Extrae coeficientes MFCC de un array de audio."""
+    # Ensure constant length (pad or trim)
+    target_len = int(SAMPLE_RATE * DURATION)
+    if len(audio_data) < target_len:
+        audio_data = np.pad(audio_data, (0, target_len - len(audio_data)))
+    else:
+        audio_data = audio_data[:target_len]
+    
+    # Extract MFCC features
+    mfcc = librosa.feature.mfcc(y=audio_data, sr=SAMPLE_RATE, n_mfcc=N_MFCC)
+    return mfcc.T  # Shape: (time_steps, n_mfcc)
+```
+
+<Info>
+**MFCC Features**: Represents the short-term power spectrum of audio, commonly used in speech recognition. The 13 coefficients capture the essential characteristics of the audio signal.
+</Info>
+
+## Dataset Preparation
+
+### Data Loading
+
+```python
+def prepare_dataset():
+    x, y = [], []
+    
+    for path, label in [(PATH_POSITIVE, 1), (PATH_NEGATIVE, 0)]:
+        print(f"📦 Cargando audios {'positivos' if label==1 else 'negativos'}...")
+        if not os.path.exists(path):
+            print(f"⚠️ Alerta: La carpeta {path} no existe.")
+            continue
+            
+        for f in os.listdir(path):
+            if f.endswith('.wav'):
+                file_path = os.path.join(path, f)
+                audio, _ = librosa.load(file_path, sr=SAMPLE_RATE, duration=DURATION)
+                feat = extract_features(audio)
+                x.append(feat)
+                y.append(label)
+                
+    return np.array(x), np.array(y)
+```
+
+### Dataset Structure
+
+<Tabs>
+  <Tab title="Positive Samples">
+    ```
+    audios/
+    ├── wake_word_001.wav
+    ├── wake_word_002.wav
+    ├── wake_word_003.wav
+    └── ...
+    
+    Label: 1 (Wake word detected)
+    Duration: 5 seconds each
+    Format: WAV, 16kHz mono
+    ```
+  </Tab>
+  
+  <Tab title="Negative Samples">
+    ```
+    audios bad/
+    ├── noise_001.wav
+    ├── speech_002.wav
+    ├── background_003.wav
+    └── ...
+    
+    Label: 0 (Not wake word)
+    Duration: 5 seconds each
+    Format: WAV, 16kHz mono
+    ```
+  </Tab>
+</Tabs>
+
+## Neural Network Architecture
+
+### LSTM Model
+
+The model uses Long Short-Term Memory (LSTM) layers for sequence processing:
+
+```python
+def build_model(input_shape):
+    model = models.Sequential([
+        layers.Input(shape=input_shape),
+        layers.LSTM(64, return_sequences=False),
+        layers.Dropout(0.3),
+        layers.Dense(32, activation='relu'),
+        layers.Dense(1, activation='sigmoid')
+    ])
+    model.compile(
+        optimizer='adam', 
+        loss='binary_crossentropy', 
+        metrics=['accuracy']
+    )
+    return model
+```
+
+### Architecture Breakdown
+
+<Steps>
+  <Step title="Input Layer">
+    **Shape**: `(time_steps, 13)`
+    - time_steps: Varies based on audio length (5 seconds × frame rate)
+    - 13: Number of MFCC coefficients
+  </Step>
+  
+  <Step title="LSTM Layer">
+    **Units**: 64  
+    **return_sequences**: False (only output final state)
+    
+    Processes temporal patterns in MFCC features to recognize the wake word sequence.
+  </Step>
+  
+  <Step title="Dropout Layer">
+    **Rate**: 0.3 (30% dropout)
+    
+    Prevents overfitting by randomly dropping 30% of neurons during training.
+  </Step>
+  
+  <Step title="Dense Layer">
+    **Units**: 32  
+    **Activation**: ReLU
+    
+    Learns high-level features from LSTM output.
+  </Step>
+  
+  <Step title="Output Layer">
+    **Units**: 1  
+    **Activation**: Sigmoid
+    
+    Produces probability (0-1) of wake word presence.
+  </Step>
+</Steps>
+
+### Training Configuration
+
+```python
+model.fit(
+    x_train, 
+    y_train, 
+    epochs=40, 
+    batch_size=8, 
+    validation_split=0.2
+)
+```
+
+<ParamField path="epochs" type="integer" default="40">
+  Number of complete passes through the training dataset
+</ParamField>
+
+<ParamField path="batch_size" type="integer" default="8">
+  Number of samples processed before model update
+</ParamField>
+
+<ParamField path="validation_split" type="float" default="0.2">
+  Percentage of data reserved for validation (20%)
+</ParamField>
+
+## Training & Detection Mode
+
+### Main Workflow
+
+```python
+def main():
+    respuesta = input("¿Quieres entrenar el modelo? (s/n): ").lower()
+    
+    if respuesta == "s":
+        # Training mode
+        x_train, y_train = prepare_dataset()
+        if len(x_train) == 0:
+            print("❌ No hay datos suficientes.")
+            return
+
+        print(f"\n🧠 Entrenando con {len(x_train)} muestras...")
+        model = build_model(x_train[0].shape)
+        model.fit(x_train, y_train, epochs=40, batch_size=8, validation_split=0.2)
+        model.save(MODEL_SAVE_PATH)
+        print(f"✅ Modelo guardado en: {MODEL_SAVE_PATH}")
+    else:
+        # Load existing model
+        if os.path.exists(MODEL_SAVE_PATH):
+            print(f"✅ Cargando modelo existente...")
+            model = models.load_model(MODEL_SAVE_PATH)
+        else:
+            print("❌ No hay modelo para cargar. Debes entrenar primero.")
+            return
+
+    # Detection loop (continues below)
+```
+
+### Real-Time Detection Loop
+
+```python
+# Detection configuration
+print("\n" + "="*40)
+print("🎤 MODO DETECCIÓN (Escuchando en bloques de 1s)")
+print("="*40)
+
+threshold = 0.8  # Confidence threshold
+
+try:
+    while True:
+        # Record 5 seconds to match training data
+        rec = sd.rec(
+            int(DURATION * SAMPLE_RATE), 
+            samplerate=SAMPLE_RATE, 
+            channels=CHANNELS
+        )
+        sd.wait()
+        audio_chunk = rec.flatten()
+        
+        # Extract features and predict
+        feat = extract_features(audio_chunk)
+        feat = np.expand_dims(feat, axis=0)  # Batch dimension
+        
+        prediction = model.predict(feat, verbose=0)[0][0]
+        
+        if prediction > threshold:
+            print(f"✅ ¡WAKE WORD DETECTADO! ({prediction:.2f})")
+        else:
+            print(f". (Prob: {prediction:.2f})", end="\r")
+            
+except KeyboardInterrupt:
+    print("\nDeteniendo detector...")
+```
+
+## Installation
+
+### Dependencies
+
+```bash
+pip install numpy sounddevice tensorflow librosa
+```
+
+<CardGroup cols={2}>
+  <Card title="numpy" icon="hashtag">
+    Array operations and numerical computing
+  </Card>
+  <Card title="sounddevice" icon="microphone">
+    Real-time audio capture from microphone
+  </Card>
+  <Card title="tensorflow" icon="brain">
+    Deep learning framework (includes Keras)
+  </Card>
+  <Card title="librosa" icon="waveform">
+    Audio feature extraction and processing
+  </Card>
+</CardGroup>
+
+### Setup Steps
+
+<Steps>
+  <Step title="Create Directory Structure">
+    ```bash
+    mkdir -p "make word/audios"
+    mkdir -p "make word/audios bad"
+    ```
+  </Step>
+  
+  <Step title="Collect Audio Samples">
+    Record wake word samples (positive) and background noise/other speech (negative):
+    
+    - **Positive samples**: 20-50 recordings of the wake word
+    - **Negative samples**: 50-100 recordings of other audio
+    - Format: WAV, 16kHz, mono, 5 seconds each
+  </Step>
+  
+  <Step title="Train the Model">
+    ```bash
+    python entrenar_wake.py
+    # Choose 's' when prompted to train
+    ```
+  </Step>
+  
+  <Step title="Run Detection">
+    ```bash
+    python entrenar_wake.py
+    # Choose 'n' to load model and start detection
+    ```
+  </Step>
+</Steps>
+
+## Usage Examples
+
+### Training Session
+
+```bash
+$ python entrenar_wake.py
+¿Quieres entrenar el modelo? (s/n): s
+
+📦 Cargando audios positivos...
+📦 Cargando audios negativos...
+
+🧠 Entrenando con 120 muestras...
+Epoch 1/40
+12/12 [==============================] - 2s 156ms/step - loss: 0.6821 - accuracy: 0.5625 - val_loss: 0.6745 - val_accuracy: 0.6250
+Epoch 2/40
+12/12 [==============================] - 1s 95ms/step - loss: 0.6523 - accuracy: 0.6458 - val_loss: 0.6234 - val_accuracy: 0.7083
+...
+Epoch 40/40
+12/12 [==============================] - 1s 92ms/step - loss: 0.0823 - accuracy: 0.9792 - val_loss: 0.1234 - val_accuracy: 0.9583
+
+✅ Modelo guardado en: /home/daniel-de-anda/Escritorio/proyectos/make word/wake_word_model.h5
+```
+
+### Detection Session
+
+```bash
+$ python entrenar_wake.py
+¿Quieres entrenar el modelo? (s/n): n
+✅ Cargando modelo existente...
+
+========================================
+🎤 MODO DETECCIÓN (Escuchando en bloques de 1s)
+========================================
+
+. (Prob: 0.12)
+. (Prob: 0.08)
+. (Prob: 0.15)
+✅ ¡WAKE WORD DETECTADO! (0.92)
+. (Prob: 0.23)
+. (Prob: 0.11)
+```
+
+## Performance Tuning
+
+### Threshold Adjustment
+
+<Tabs>
+  <Tab title="High Precision">
+    ```python
+    threshold = 0.9  # Fewer false positives
+    ```
+    - More confident detections
+    - May miss some wake words
+    - Best for noisy environments
+  </Tab>
+  
+  <Tab title="Balanced">
+    ```python
+    threshold = 0.8  # Default balance
+    ```
+    - Good balance of precision/recall
+    - Recommended starting point
+  </Tab>
+  
+  <Tab title="High Recall">
+    ```python
+    threshold = 0.6  # More detections
+    ```
+    - Catches more wake words
+    - More false positives
+    - Best for quiet environments
+  </Tab>
+</Tabs>
+
+### Model Optimization
+
+<CodeGroup>
+```python More LSTM Units
+# Increase model capacity
+layers.LSTM(128, return_sequences=False)  # From 64 to 128
+```
+
+```python Deeper Network
+# Add more layers
+model = models.Sequential([
+    layers.Input(shape=input_shape),
+    layers.LSTM(64, return_sequences=True),
+    layers.LSTM(32, return_sequences=False),
+    layers.Dropout(0.3),
+    layers.Dense(32, activation='relu'),
+    layers.Dense(1, activation='sigmoid')
+])
+```
+
+```python More MFCC Features
+# Increase feature resolution
+N_MFCC = 20  # From 13 to 20
+```
+</CodeGroup>
+
+## Technical Details
+
+### MFCC Feature Dimensions
+
+For a 5-second audio clip at 16kHz:
+
+```python
+target_len = 16000 * 5 = 80000 samples
+MFCC shape after extraction: (time_steps, 13)
+# time_steps depends on librosa's hop_length (default 512)
+time_steps ≈ 80000 / 512 ≈ 156 frames
+
+Final input shape: (156, 13)
+```
+
+### Model Summary
+
+```
+Model: "sequential"
+_________________________________________________________________
+Layer (type)                 Output Shape              Param #   
+=================================================================
+lstm (LSTM)                  (None, 64)                19968     
+_________________________________________________________________
+dropout (Dropout)            (None, 64)                0         
+_________________________________________________________________
+dense (Dense)                (None, 32)                2080      
+_________________________________________________________________
+dense_1 (Dense)              (None, 1)                 33        
+=================================================================
+Total params: 22,081
+Trainable params: 22,081
+Non-trainable params: 0
+_________________________________________________________________
+```
+
+## Best Practices
+
+<Warning>
+**Data Quality**: The model's performance heavily depends on:
+- Diverse positive samples (different speakers, distances, accents)
+- Representative negative samples (common background noises)
+- Balanced dataset (roughly equal positive/negative samples)
+</Warning>
+
+<Tip>
+**Recording Tips**:
+1. Record in the actual environment where detection will occur
+2. Include variations: loud, quiet, fast, slow pronunciations
+3. Add negative samples with similar-sounding words
+4. Use consistent audio format (16kHz, mono, WAV)
+</Tip>
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| High false positives | Increase threshold (0.85-0.95) or add more negative samples |
+| Missing detections | Lower threshold (0.6-0.7) or add more positive samples |
+| Poor accuracy | Collect more diverse training data (50+ each class) |
+| Model not saving | Check write permissions on `MODEL_SAVE_PATH` |
+
+## File Reference
+
+**Source**: `/home/daytona/workspace/source/proyectos/make word/entrenar_wake.py:1`  
+**Lines of Code**: 123  
+**Model Format**: Keras HDF5 (`.h5`)
+
+## Related Projects
+
+<CardGroup cols={2}>
+  <Card title="AI Voice Assistant" icon="microphone" href="./ai-assistant">
+    Integrate wake word with full voice assistant
+  </Card>
+  <Card title="Intent Classification" icon="brain" href="./intent-classification">
+    Classify user commands after wake word
+  </Card>
+</CardGroup>

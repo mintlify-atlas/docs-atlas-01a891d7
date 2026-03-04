@@ -1,0 +1,293 @@
+---
+title: Virtual Environment Setup
+description: Critical guide for setting up Python virtual environments, especially for Ubuntu users
+---
+
+## Why Virtual Environments?
+
+A virtual environment is an isolated Python environment that allows you to install packages without affecting your system's Python installation.
+
+<Warning>
+**Critical for Ubuntu Users**: Ubuntu's operating system relies on Python for core functionality. Installing or updating Python libraries system-wide **will break your system**. Virtual environments are **mandatory** on Ubuntu.
+</Warning>
+
+## Benefits of Virtual Environments
+
+- **Isolation**: Each project has its own dependencies
+- **System Safety**: Prevents breaking system Python (critical on Ubuntu)
+- **Version Control**: Different projects can use different package versions
+- **Clean Dependencies**: Easy to track what your project needs
+- **Reproducibility**: Share exact dependency versions with others
+
+## Ubuntu Virtual Environment Issues
+
+### The Problem
+
+When the Grupo de Anda team first ran the code on Ubuntu, they encountered a critical issue:
+
+<Note>
+Ubuntu's code includes parts written in Python. Adding or updating libraries in the system Python would break Ubuntu's functionality.
+</Note>
+
+### The Solution
+
+**Always use virtual environments on Ubuntu.** This keeps your project dependencies completely separate from the system Python.
+
+## Creating a Virtual Environment
+
+<Steps>
+  <Step title="Navigate to Your Project">
+    Open a terminal and navigate to your project directory:
+    
+    ```bash
+    cd /ruta/a/tu/proyecto
+    ```
+    
+    Replace `/ruta/a/tu/proyecto` with the actual path to your Grupo de Anda project.
+    
+    Example:
+    ```bash
+    cd ~/Downloads/grupo-de-anda-main
+    ```
+  </Step>
+
+  <Step title="Create the Virtual Environment">
+    Run the following command to create a virtual environment:
+    
+    ```bash
+    python -m venv .venv
+    ```
+    
+    Or on Linux:
+    ```bash
+    python3 -m venv .venv
+    ```
+    
+    This creates a `.venv` folder in your project directory containing the isolated Python environment.
+    
+    <Info>
+    The `.venv` name is a convention. You can use any name, but `.venv` is recommended as it's commonly recognized and often automatically excluded from version control.
+    </Info>
+  </Step>
+
+  <Step title="Activate the Virtual Environment">
+    ### Windows (PowerShell)
+    ```powershell
+    .venv\Scripts\Activate.ps1
+    ```
+    
+    ### Windows (Command Prompt)
+    ```cmd
+    .venv\Scripts\activate.bat
+    ```
+    
+    ### Linux / macOS
+    ```bash
+    source .venv/bin/activate
+    ```
+    
+    When activated, you'll see `(.venv)` at the beginning of your terminal prompt:
+    ```bash
+    (.venv) user@computer:~/project$
+    ```
+  </Step>
+
+  <Step title="Verify Activation">
+    Check that you're using the virtual environment's Python:
+    
+    ```bash
+    which python
+    ```
+    
+    It should point to the `.venv` directory:
+    ```
+    /path/to/your/project/.venv/bin/python
+    ```
+  </Step>
+</Steps>
+
+## Using Virtual Environments
+
+### Installing Packages
+
+Once your virtual environment is activated, install packages normally:
+
+```bash
+pip install customtkinter
+```
+
+The packages will only be installed in the virtual environment, not system-wide.
+
+### Deactivating
+
+When you're done working on the project:
+
+```bash
+deactivate
+```
+
+This returns you to your system's default Python environment.
+
+### Reactivating
+
+Every time you open a new terminal to work on your project, you need to reactivate:
+
+**Windows:**
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+**Linux/macOS:**
+```bash
+source .venv/bin/activate
+```
+
+## VS Code Integration
+
+VS Code can automatically detect and use your virtual environment:
+
+<Steps>
+  <Step title="Open Your Project in VS Code">
+    ```bash
+    code /path/to/your/project
+    ```
+  </Step>
+
+  <Step title="Select the Virtual Environment">
+    1. Press `Ctrl+Shift+P` to open the command palette
+    2. Type "Python: Select Interpreter"
+    3. Choose the interpreter from `.venv` (it will show the path)
+  </Step>
+
+  <Step title="Automatic Activation">
+    VS Code will now automatically activate the virtual environment when you:
+    - Open a terminal in VS Code
+    - Run Python files
+    - Debug Python code
+  </Step>
+</Steps>
+
+<Info>
+If VS Code doesn't detect your `.venv`, try reloading the window: `Ctrl+Shift+P` → "Developer: Reload Window"
+</Info>
+
+## Platform-Specific Considerations
+
+### Ubuntu
+
+<Warning>
+**Mandatory**: Always use virtual environments on Ubuntu. Never install packages with `sudo pip`.
+</Warning>
+
+Ensure you have the venv package installed:
+```bash
+sudo apt install python3-venv
+```
+
+### Windows
+
+#### PowerShell Execution Policy
+
+If you get an error about execution policies when activating:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+Then try activating again.
+
+### macOS
+
+Virtual environments work the same as Linux. Use:
+```bash
+source .venv/bin/activate
+```
+
+## Best Practices
+
+<Note>
+- **Always activate** before installing packages or running code
+- **One virtual environment per project**
+- **Don't commit** `.venv` to version control (add to `.gitignore`)
+- **Document dependencies** in `requirements.txt` (see [Dependencies guide](/guides/dependencies))
+- **Recreate easily** from `requirements.txt` on new systems
+</Note>
+
+## Common Workflows
+
+### Starting Work on the Project
+
+```bash
+cd /path/to/proyecto-grupo-de-anda
+source .venv/bin/activate  # or .venv\Scripts\Activate.ps1 on Windows
+```
+
+### Installing New Dependencies
+
+```bash
+# Ensure virtual environment is activated
+pip install nueva-libreria
+```
+
+### Running Your Code
+
+```bash
+# Ensure virtual environment is activated
+python tu_script.py
+```
+
+Or press **F5** in VS Code (with the correct interpreter selected).
+
+## Next Steps
+
+Now that you have a virtual environment set up:
+
+1. [Install project dependencies](/guides/dependencies)
+2. [Set up Arduino hardware](/guides/arduino-setup) (for hardware projects)
+
+## Troubleshooting
+
+<Accordion title="Command not found: python">
+  **Linux**: Use `python3` instead of `python`:
+  ```bash
+  python3 -m venv .venv
+  ```
+</Accordion>
+
+<Accordion title="Activation script not found">
+  Make sure you're in the project directory where you created `.venv`:
+  ```bash
+  ls -la  # Should show .venv directory
+  ```
+  
+  If `.venv` doesn't exist, recreate it:
+  ```bash
+  python3 -m venv .venv
+  ```
+</Accordion>
+
+<Accordion title="PowerShell execution policy error">
+  Run PowerShell as Administrator and execute:
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+</Accordion>
+
+<Accordion title="Virtual environment not detected in VS Code">
+  1. Ensure `.venv` exists in your project root
+  2. Reload VS Code: `Ctrl+Shift+P` → "Developer: Reload Window"
+  3. Manually select interpreter: `Ctrl+Shift+P` → "Python: Select Interpreter" → Choose `.venv`
+</Accordion>
+
+<Accordion title="Packages still installing system-wide">
+  Verify your virtual environment is activated:
+  ```bash
+  which python  # Should point to .venv/bin/python
+  ```
+  
+  If not activated, activate it:
+  ```bash
+  source .venv/bin/activate  # Linux/macOS
+  .venv\Scripts\Activate.ps1  # Windows
+  ```
+</Accordion>

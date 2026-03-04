@@ -1,0 +1,375 @@
+---
+title: Installing and Managing Dependencies
+description: Guide to installing Python libraries and managing project dependencies
+---
+
+## Overview
+
+Grupo de Anda projects use various Python libraries for AI, audio processing, GUI development, and more. This guide covers installing and managing these dependencies.
+
+<Warning>
+**Ubuntu Users**: Always activate your virtual environment before installing dependencies. See the [Virtual Environments guide](/guides/virtual-environments) first.
+</Warning>
+
+## Required Dependencies
+
+The Grupo de Anda projects use the following Python libraries:
+
+```bash
+pip install customtkinter keyboard gpt4all requests llama-cpp-python gTTS pygame torch librosa numpy sounddevice pydub
+```
+
+### Library Overview
+
+| Library | Purpose |
+|---------|----------|
+| **customtkinter** | Modern GUI framework for Python applications |
+| **keyboard** | Keyboard event handling and hotkeys |
+| **gpt4all** | Local AI model integration |
+| **requests** | HTTP requests for API calls |
+| **llama-cpp-python** | Llama model inference |
+| **gTTS** | Google Text-to-Speech |
+| **pygame** | Audio playback and game development |
+| **torch** | PyTorch deep learning framework |
+| **librosa** | Audio analysis and processing |
+| **numpy** | Numerical computing |
+| **sounddevice** | Audio recording and playback |
+| **pydub** | Audio file manipulation |
+
+## Installation Steps
+
+<Steps>
+  <Step title="Activate Virtual Environment">
+    <Warning>
+    **Critical**: Always activate your virtual environment first, especially on Ubuntu.
+    </Warning>
+    
+    **Windows:**
+    ```powershell
+    .venv\Scripts\Activate.ps1
+    ```
+    
+    **Linux/macOS:**
+    ```bash
+    source .venv/bin/activate
+    ```
+    
+    You should see `(.venv)` in your terminal prompt.
+  </Step>
+
+  <Step title="Update pip">
+    Ensure you have the latest version of pip:
+    
+    ```bash
+    pip install --upgrade pip
+    ```
+  </Step>
+
+  <Step title="Install All Dependencies">
+    Install all required libraries at once:
+    
+    ```bash
+    pip install customtkinter keyboard gpt4all requests llama-cpp-python gTTS pygame torch librosa numpy sounddevice pydub
+    ```
+    
+    <Info>
+    This may take several minutes as some packages (especially PyTorch) are quite large.
+    </Info>
+  </Step>
+
+  <Step title="Verify Installation">
+    Test that the packages installed correctly:
+    
+    ```bash
+    pip list
+    ```
+    
+    You should see all the installed packages listed.
+  </Step>
+</Steps>
+
+## Installing Individual Packages
+
+If you prefer to install packages one at a time or only need specific libraries:
+
+### GUI Development
+```bash
+pip install customtkinter
+```
+
+### AI and Machine Learning
+```bash
+pip install gpt4all llama-cpp-python torch
+```
+
+### Audio Processing
+```bash
+pip install gTTS pygame librosa sounddevice pydub
+```
+
+### Utilities
+```bash
+pip install keyboard requests numpy
+```
+
+## API Configuration
+
+Some features require API keys or external services:
+
+<Note>
+If the code you want to run uses AI models that require an API, you'll need to obtain the appropriate API key.
+</Note>
+
+### Google Gemini API
+- **Endpoint**: `https://generativelanguage.googleapis.com/`
+- **Use**: AI model integration
+- Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+
+### Google Text-to-Speech API
+- **Endpoint**: `https://translate.google.com/translate_tts`
+- **Use**: Text-to-speech conversion
+- Used by the gTTS library (no API key needed for basic usage)
+
+<Accordion title="How to configure API keys">
+  API keys are typically configured in environment variables or configuration files:
+  
+  **Environment Variable:**
+  ```bash
+  export GEMINI_API_KEY="your-api-key-here"
+  ```
+  
+  **Configuration File:**
+  Create a `.env` file or config file as specified by the specific project.
+  
+  <Warning>
+  Never commit API keys to version control. Add `.env` to your `.gitignore` file.
+  </Warning>
+</Accordion>
+
+## Dependency Management
+
+### Creating requirements.txt
+
+To save your current dependencies:
+
+```bash
+pip freeze > requirements.txt
+```
+
+This creates a file listing all installed packages and their versions.
+
+### Installing from requirements.txt
+
+If the project includes a `requirements.txt` file:
+
+```bash
+pip install -r requirements.txt
+```
+
+This installs all dependencies with the exact versions specified.
+
+## Platform-Specific Notes
+
+### Ubuntu/Linux
+
+<Warning>
+Always use virtual environments on Ubuntu. Never use `sudo pip` to install packages.
+</Warning>
+
+Some packages may require system dependencies:
+
+```bash
+# For audio libraries
+sudo apt install portaudio19-dev python3-pyaudio
+
+# For general development
+sudo apt install python3-dev build-essential
+```
+
+### Windows
+
+- Most packages install without issues
+- PyTorch may require Visual C++ Redistributable
+- Some audio libraries may need additional setup
+
+### macOS
+
+- Install Homebrew first for system dependencies
+- May need Xcode Command Line Tools:
+  ```bash
+  xcode-select --install
+  ```
+
+## PyTorch Installation
+
+PyTorch is a large package with different installation options:
+
+### CPU-Only (Smaller, Faster Download)
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+```
+
+### GPU Support (CUDA)
+
+For NVIDIA GPU acceleration:
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cu118
+```
+
+<Info>
+The basic `pip install torch` command installs the CPU version. For GPU training and inference, use the CUDA version appropriate for your system.
+</Info>
+
+## Updating Dependencies
+
+### Update a Single Package
+```bash
+pip install --upgrade package-name
+```
+
+### Update All Packages
+```bash
+pip list --outdated
+pip install --upgrade package-name1 package-name2
+```
+
+<Warning>
+Be cautious when updating packages as new versions may introduce breaking changes. Test thoroughly after updates.
+</Warning>
+
+## Running the Code
+
+After installing dependencies:
+
+<Steps>
+  <Step title="Ensure Virtual Environment is Active">
+    Check for `(.venv)` in your terminal prompt.
+  </Step>
+
+  <Step title="Navigate to Project Directory">
+    ```bash
+    cd /path/to/your/project
+    ```
+  </Step>
+
+  <Step title="Run the Program">
+    **In Terminal:**
+    ```bash
+    python your_script.py
+    ```
+    
+    **In VS Code:**
+    Press **F5** to execute in terminal or launch the visual interface.
+    
+    <Info>
+    Depending on the file, it will either run in the terminal or open a graphical user interface.
+    </Info>
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+<Accordion title="ModuleNotFoundError: No module named 'X'">
+  The package isn't installed. Install it:
+  ```bash
+  pip install package-name
+  ```
+  
+  Make sure your virtual environment is activated.
+</Accordion>
+
+<Accordion title="Permission denied error">
+  **Ubuntu**: Never use `sudo pip`. Use a virtual environment instead.
+  
+  **Windows**: Run your terminal as administrator, or use virtual environments (recommended).
+</Accordion>
+
+<Accordion title="PyTorch installation is very slow">
+  PyTorch is a large package (several GB). The download takes time depending on your internet connection.
+  
+  For a smaller install, use CPU-only:
+  ```bash
+  pip install torch --index-url https://download.pytorch.org/whl/cpu
+  ```
+</Accordion>
+
+<Accordion title="Package version conflicts">
+  Try creating a fresh virtual environment:
+  ```bash
+  # Deactivate current environment
+  deactivate
+  
+  # Remove old environment
+  rm -rf .venv
+  
+  # Create new environment
+  python3 -m venv .venv
+  source .venv/bin/activate
+  
+  # Reinstall packages
+  pip install customtkinter keyboard gpt4all ...
+  ```
+</Accordion>
+
+<Accordion title="Audio libraries not working">
+  **Linux**: Install system audio dependencies:
+  ```bash
+  sudo apt install portaudio19-dev python3-pyaudio ffmpeg
+  ```
+  
+  **Windows**: Install Visual C++ Redistributable from Microsoft.
+  
+  **macOS**: Install portaudio via Homebrew:
+  ```bash
+  brew install portaudio
+  ```
+</Accordion>
+
+<Accordion title="gpt4all or llama-cpp-python build errors">
+  These packages require compilation. Install build tools:
+  
+  **Ubuntu:**
+  ```bash
+  sudo apt install build-essential cmake
+  ```
+  
+  **Windows**: Install Visual Studio Build Tools
+  
+  **macOS**: Install Xcode Command Line Tools:
+  ```bash
+  xcode-select --install
+  ```
+</Accordion>
+
+## Next Steps
+
+With dependencies installed, you can:
+
+1. [Set up Arduino hardware](/guides/arduino-setup) (for hardware projects)
+2. Start running the Grupo de Anda projects
+3. Explore the AI model training in the `ai creator` folder
+
+## Additional Resources
+
+### AI Model Training
+
+<Info>
+In the `ai creator` folder, you'll find AI model training code. You can:
+- Use existing training data
+- Add your own data for training
+- Configure to use CPU, GPU, or both for improved performance
+</Info>
+
+### Supported AI Commands
+
+The trained models support these commands:
+- `search=[tema]` - AI searches the internet for a topic
+- `clma=[lugar]` - AI provides climate data for a specific region  
+- `ubicacion=[]` - Provides location data to the AI
+
+### Intent Detection
+
+The intent detection model recognizes:
+- `investigar` (research)
+- `clima` (weather/climate)
+- `conversacion_ai` (AI conversation)

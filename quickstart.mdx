@@ -1,80 +1,380 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get up and running with Grupo de Anda projects in minutes
 ---
 
-## Get started in three steps
+## Prerequisites
 
-Get your documentation site running locally and make your first customization.
+Before you begin, ensure you have the following installed:
 
-### Step 1: Set up your local environment
+- **Python 3.11 or 3.13** (recommended versions for compatibility)
+- **Visual Studio Code** (or your preferred code editor)
+- **pip** (Python package manager)
+- **Git** (for cloning the repository)
+
+<Info>
+  This guide is optimized for **Ubuntu/Linux** systems. Windows and macOS users may need to adjust some commands.
+</Info>
+
+## Installation
+
+<Steps>
+  <Step title="Download the repository">
+    Clone or download the repository from GitHub:
+
+    ```bash
+    # Clone with git
+    git clone <repository-url>
+    
+    # Or download as ZIP
+    # Navigate to the repository on GitHub
+    # Click "Code" > "Download ZIP"
+    # Extract the ZIP file to your desired location
+    ```
+
+    Navigate to the project directory:
+
+    ```bash
+    cd grupo-de-anda
+    ```
+  </Step>
+
+  <Step title="Install Python and VS Code">
+    Download and install the required software:
+
+    **Python 3.11.14:**
+    - Visit [https://www.python.org/](https://www.python.org/)
+    - Download Python 3.11.14 or Python 3.13.x
+    - Follow the installation instructions for your operating system
+
+    **Visual Studio Code:**
+    - Visit [https://code.visualstudio.com/download](https://code.visualstudio.com/download)
+    - Download and install VS Code for your platform
+    - Install the Python extension for VS Code
+
+    <Note>
+      For detailed installation instructions, watch [this setup tutorial](https://youtu.be/-IyA_Yvs8IQ?si=TLsaDUCOuN6ZFmnr).
+    </Note>
+  </Step>
+
+  <Step title="Create a virtual environment (Ubuntu users)">
+    <Warning>
+      **Ubuntu users:** Creating a virtual environment is **critical** to avoid breaking system Python packages. Ubuntu's system code relies on Python, and installing libraries globally can cause system instability.
+    </Warning>
+
+    Create and activate a virtual environment:
+
+    ```bash
+    # Navigate to your project directory
+    cd /path/to/grupo-de-anda
+
+    # Create virtual environment
+    python3 -m venv .venv
+
+    # Activate the virtual environment
+    # On Linux/macOS:
+    source .venv/bin/activate
+
+    # On Windows PowerShell:
+    # .venv\Scripts\Activate.ps1
+
+    # On Windows Command Prompt:
+    # .venv\Scripts\activate.bat
+    ```
+
+    You should see `(.venv)` prefix in your terminal prompt, indicating the virtual environment is active.
+
+    To deactivate later:
+
+    ```bash
+    deactivate
+    ```
+  </Step>
+
+  <Step title="Install Python dependencies">
+    With your virtual environment activated, install the core dependencies:
+
+    ```bash
+    pip install --upgrade pip
+    ```
+
+    **For AI/ML projects** (includes PyTorch with CPU support):
+
+    ```bash
+    pip install torch --index-url https://download.pytorch.org/whl/cpu
+    pip install transformers datasets peft accelerate
+    ```
+
+    **For general projects** (GUI apps, voice assistants, utilities):
+
+    ```bash
+    pip install customtkinter keyboard gpt4all requests llama-cpp-python
+    pip install gTTS pygame torch librosa numpy sounddevice pydub
+    ```
+
+    <Info>
+      Install only the libraries needed for your specific project to save time and disk space. Check each project's imports to determine requirements.
+    </Info>
+  </Step>
+
+  <Step title="Configure API keys (if needed)">
+    Some projects require API keys for external services:
+
+    **Google Gemini API** (for AI assistant projects):
+    - Visit [Google AI Studio](https://generativelanguage.googleapis.com/)
+    - Generate an API key
+    - Add it to the project file:
+
+    ```python
+    # In proyectos/ai creator/asistantkamutini.py
+    API_KEY_GEMINI = "your-api-key-here"
+    ```
+
+    **Google Search API** (for search functionality):
+    - Obtain a Google Custom Search API key
+    - Get a Search Engine ID
+    - Configure in the project:
+
+    ```python
+    API_KEY_GOOGLE_SEARCH = "your-search-api-key"
+    SEARCH_ENGINE_ID = "your-search-engine-id"
+    ```
+
+    **Google Text-to-Speech (gTTS)**:
+    - No API key required
+    - Uses: [https://translate.google.com/translate_tts](https://translate.google.com/translate_tts)
+  </Step>
+</Steps>
+
+## Running your first project
+
+<Tabs>
+  <Tab title="AI Voice Assistant">
+    Run the AI assistant with Google Gemini integration:
+
+    ```bash
+    cd proyectos/"ai creator"
+    python asistantkamutini.py
+    ```
+
+    **What it does:**
+    - Voice-based AI assistant
+    - Uses Google Gemini for conversational AI
+    - Text-to-speech responses with gTTS
+    - Web search integration
+    - Intent detection
+
+    <Note>
+      Make sure you've configured your `API_KEY_GEMINI` before running this project.
+    </Note>
+  </Tab>
+
+  <Tab title="miPOS System">
+    Launch the point-of-sale desktop application:
+
+    ```bash
+    cd proyectos/"mipunto -"
+    python inicio.py
+    ```
+
+    **Features:**
+    - Inventory management (`inventario.py`)
+    - Sales processing (`ventas.py`)
+    - Reporting system (`reporte.py`)
+    - AI-powered analytics (`ai.py`)
+    - CustomTkinter GUI interface
+
+    The application window will open with buttons for:
+    - Inventario (Inventory)
+    - Nueva venta (New Sale)
+    - Reporte (Report)
+    - Reporte con AI (AI Report)
+  </Tab>
+
+  <Tab title="Custom AI Model">
+    Train or use a custom transformer model:
+
+    ```bash
+    cd proyectos/"ai creator"/kamutini
+    python modelo.py
+    ```
+
+    **Features:**
+    - Custom PyTorch transformer architecture
+    - Automatic device detection (CUDA/MPS/CPU)
+    - Dataset normalization from JSON/CSV files
+    - Configurable hyperparameters
+    - Intent detection model
+
+    **Model configuration:**
+
+    ```python
+    CONFIG = {
+        "batch_size": 16,
+        "block_size": 256,
+        "n_embd": 512,
+        "n_head": 8,
+        "n_layer": 8,
+        "dropout": 0.1,
+        "learning_rate": 5e-4,
+        "max_steps": 2000,
+        "temperature": 0.7,
+        "top_k": 50
+    }
+    ```
+
+    <Warning>
+      Training AI models is resource-intensive. The model automatically uses GPU (CUDA/MPS) if available, otherwise falls back to CPU.
+    </Warning>
+  </Tab>
+</Tabs>
+
+## Running projects in VS Code
+
+Once you have a project open in Visual Studio Code:
+
+1. Open the Python file you want to run (e.g., `inicio.py`, `asistantkamutini.py`)
+2. Press **F5** to run the program with debugging
+3. Or use the terminal:
+   ```bash
+   python filename.py
+   ```
+
+<Info>
+  Some programs open a GUI window, while others run in the terminal. Check the project's code to understand its interface.
+</Info>
+
+## Arduino/Hardware projects
+
+For hardware projects in `proyectos hadwere/arduino nano/`:
+
+<Steps>
+  <Step title="Install Arduino IDE">
+    Download and install the Arduino IDE:
+    - Visit [https://www.arduino.cc/en/software](https://www.arduino.cc/en/software)
+    - Install for your operating system
+  </Step>
+
+  <Step title="Open the .ino file">
+    Navigate to the hardware project:
+
+    ```bash
+    cd "proyectos hadwere/arduino nano/lampara_solar/v2"
+    ```
+
+    Open `codigo.ino` in the Arduino IDE.
+  </Step>
+
+  <Step title="Configure and upload">
+    1. Select your board: **Tools > Board > Arduino Nano**
+    2. Select the processor: **Tools > Processor > ATmega328P** (or your variant)
+    3. Select the port: **Tools > Port > [Your Arduino Port]**
+    4. Click **Upload** (→ button) to flash the code to your Arduino
+  </Step>
+</Steps>
+
+## Understanding AI commands
+
+The AI Creator project includes custom commands for the voice assistant:
+
+| Command | Format | Description |
+|---------|--------|-------------|
+| Search | `search=[topic]` | AI researches a topic on the internet |
+| Weather | `clma=[location]` | AI retrieves weather for a specific location |
+| Location | `ubicacion=[]` | Provides location data to the AI |
+
+**Intent detection categories:**
+- `investigar` (research)
+- `clima` (weather)
+- `conversacion_ai` (AI conversation)
+
+## Troubleshooting
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Module not found error">
+    If you see `ModuleNotFoundError: No module named 'xxx'`:
+
+    ```bash
+    # Make sure your virtual environment is activated
+    source .venv/bin/activate
+
+    # Install the missing package
+    pip install xxx
+    ```
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion title="Ubuntu: Permission denied or system Python errors">
+    You're trying to modify system Python packages. **Always use a virtual environment:**
+
+    ```bash
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install [packages]
+    ```
+  </Accordion>
+
+  <Accordion title="API key errors">
+    If projects fail with API authentication errors:
+
+    1. Check that you've added your API key to the Python file
+    2. Ensure the API key is valid and not expired
+    3. Verify you have internet connectivity
+    4. Check API usage limits/quotas
+  </Accordion>
+
+  <Accordion title="PyTorch/CUDA issues">
+    To check if PyTorch detects your GPU:
+
+    ```python
+    import torch
+    print(torch.cuda.is_available())  # Should print True if CUDA is available
+    print(torch.cuda.device_count())  # Number of GPUs
+    ```
+
+    For CPU-only installation:
+
+    ```bash
+    pip install torch --index-url https://download.pytorch.org/whl/cpu
+    ```
+
+    For CUDA 12.1:
+
+    ```bash
+    pip install torch --index-url https://download.pytorch.org/whl/cu121
+    ```
+  </Accordion>
+
+  <Accordion title="Arduino upload failed">
+    Common Arduino issues:
+
+    1. **Wrong port selected**: Check Tools > Port and select the correct USB port
+    2. **Board not recognized**: Install CH340 drivers if using clone boards
+    3. **Bootloader issue**: Try holding reset while uploading
+    4. **Processor mismatch**: Verify your Arduino Nano variant (ATmega328P vs ATmega328P Old Bootloader)
   </Accordion>
 </AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that you're set up:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Explore projects" icon="folder-open" href="/software/ai-assistant">
+    Browse detailed documentation for each project
+  </Card>
+  <Card title="API references" icon="code" href="/api/ai-models">
+    Learn about the APIs and libraries used
+  </Card>
+  <Card title="Hardware guides" icon="microchip" href="/hardware/overview">
+    Circuit diagrams and hardware setup guides
+  </Card>
+  <Card title="Development guides" icon="book" href="/guides/python-setup">
+    Learn how to set up your development environment
+  </Card>
 </CardGroup>
 
+---
+
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  Having issues? Remember that this code is designed for **Ubuntu with Python 3.11/3.13**. Adjust paths and commands for your operating system.
 </Note>

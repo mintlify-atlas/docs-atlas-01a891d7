@@ -1,0 +1,421 @@
+---
+title: Arduino IDE and Hardware Setup
+description: Guide to setting up Arduino and hardware components for Grupo de Anda projects
+---
+
+## Overview
+
+Grupo de Anda includes hardware projects using Arduino, ESP32, Raspberry Pi, and other microcontrollers. This guide covers setting up the Arduino IDE and preparing your hardware development environment.
+
+<Info>
+This guide focuses on Arduino setup. The projects also support ESP32, Raspberry Pi, and other microcontrollers.
+</Info>
+
+## Hardware Project Types
+
+The repository includes:
+
+1. **Arduino Prototypes** - Projects using Arduino boards (Uno, Nano, Mega, etc.)
+2. **ESP32 Projects** - WiFi/Bluetooth enabled microcontroller projects
+3. **Raspberry Pi** - Single-board computer projects
+4. **Integrated Projects** - Combined hardware and software systems
+
+## Arduino IDE Installation
+
+<Steps>
+  <Step title="Download Arduino IDE">
+    Visit the official Arduino website:
+    
+    [https://www.arduino.cc/en/software](https://www.arduino.cc/en/software)
+    
+    Download the latest version for your operating system:
+    - **Windows**: Installer (.exe) or ZIP file
+    - **Linux**: AppImage or package manager
+    - **macOS**: DMG file
+  </Step>
+
+  <Step title="Install Arduino IDE">
+    ### Windows
+    Run the installer and follow the prompts. The installer will also install necessary USB drivers.
+    
+    ### Linux (Ubuntu)
+    
+    **Option 1: AppImage (Recommended)**
+    ```bash
+    chmod +x arduino-ide_*.AppImage
+    ./arduino-ide_*.AppImage
+    ```
+    
+    **Option 2: APT Package**
+    ```bash
+    sudo apt update
+    sudo apt install arduino
+    ```
+    
+    **Add user to dialout group** (required for serial port access):
+    ```bash
+    sudo usermod -a -G dialout $USER
+    ```
+    
+    Log out and log back in for the change to take effect.
+    
+    ### macOS
+    Open the DMG file and drag Arduino IDE to Applications.
+  </Step>
+
+  <Step title="Launch Arduino IDE">
+    Open the Arduino IDE to verify installation.
+  </Step>
+</Steps>
+
+## Configuring Arduino IDE
+
+### Board Manager Setup
+
+<Steps>
+  <Step title="Open Board Manager">
+    In Arduino IDE:
+    1. Go to **Tools** → **Board** → **Board Manager**
+    2. Or click the board icon in the left sidebar
+  </Step>
+
+  <Step title="Install Board Packages">
+    Install support for your boards:
+    
+    **For Arduino boards** (usually pre-installed):
+    - Search for "Arduino AVR Boards"
+    - Click Install
+    
+    **For ESP32**:
+    - Add to Additional Boards Manager URLs:
+      ```
+      https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
+      ```
+    - Go to File → Preferences, paste the URL in "Additional Boards Manager URLs"
+    - Search for "esp32" in Board Manager
+    - Install "ESP32 by Espressif Systems"
+    
+    **For Raspberry Pi Pico**:
+    - Add to Additional Boards Manager URLs:
+      ```
+      https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+      ```
+    - Install "Raspberry Pi Pico/RP2040" from Board Manager
+  </Step>
+</Steps>
+
+## Library Installation
+
+<Steps>
+  <Step title="Open Library Manager">
+    In Arduino IDE:
+    1. Go to **Tools** → **Manage Libraries**
+    2. Or click the library icon in the left sidebar
+  </Step>
+
+  <Step title="Install Common Libraries">
+    Search and install libraries as needed by your project:
+    
+    **Common libraries for Grupo de Anda projects:**
+    - WiFi (for ESP32 projects)
+    - ArduinoJson (for data handling)
+    - Servo (for motor control)
+    - Adafruit Sensor libraries (for various sensors)
+    - Wire (I2C communication, usually built-in)
+    - SPI (SPI communication, usually built-in)
+  </Step>
+</Steps>
+
+<Info>
+Check the specific hardware project folder for a list of required libraries. Most projects include comments at the top of the `.ino` file listing dependencies.
+</Info>
+
+## Connecting Your Board
+
+<Steps>
+  <Step title="Connect via USB">
+    Connect your Arduino board to your computer using a USB cable.
+    
+    <Note>
+    Some Arduino clones require CH340 or CP210x USB drivers. These usually install automatically on Windows, but may need manual installation on Linux/macOS.
+    </Note>
+  </Step>
+
+  <Step title="Select Your Board">
+    In Arduino IDE:
+    1. Go to **Tools** → **Board**
+    2. Select your board (e.g., "Arduino Uno", "ESP32 Dev Module")
+  </Step>
+
+  <Step title="Select the Port">
+    Go to **Tools** → **Port** and select the port your board is connected to:
+    
+    - **Windows**: COM3, COM4, etc.
+    - **Linux**: /dev/ttyUSB0, /dev/ttyACM0, etc.
+    - **macOS**: /dev/cu.usbserial-*, /dev/cu.usbmodem*
+    
+    <Info>
+    If you don't see any ports, check your USB connection and ensure drivers are installed.
+    </Info>
+  </Step>
+
+  <Step title="Test Connection">
+    Upload a test sketch:
+    1. Go to **File** → **Examples** → **01.Basics** → **Blink**
+    2. Click the **Upload** button (→)
+    3. Wait for upload to complete
+    4. The LED on your board should start blinking
+  </Step>
+</Steps>
+
+## Language Support
+
+### Programming Languages for Hardware
+
+Grupo de Anda hardware projects use:
+
+```
+C++    - Arduino sketches
+Python - Raspberry Pi and PC-side control
+HTML   - Web interfaces for IoT projects
+CSS    - Styling for web interfaces
+```
+
+<Note>
+Arduino sketches are written in C++ with Arduino-specific functions and libraries.
+</Note>
+
+## Project Structure
+
+Hardware projects in the repository typically include:
+
+```
+proyecto-hardware/
+├── sketch.ino              # Main Arduino code
+├── README.md               # Project documentation
+├── circuit-diagram.png     # Circuit schematic
+├── libraries/              # Custom libraries (if any)
+└── python-control/         # Python scripts for PC control
+```
+
+## Integration with Python Projects
+
+Many Grupo de Anda projects integrate Arduino hardware with Python software:
+
+### Serial Communication
+
+Python can communicate with Arduino via serial port using the `pyserial` library:
+
+```bash
+pip install pyserial
+```
+
+**Example Python code:**
+```python
+import serial
+import time
+
+# Connect to Arduino
+arduino = serial.Serial('/dev/ttyUSB0', 9600)
+time.sleep(2)  # Wait for connection
+
+# Send data
+arduino.write(b'Hello Arduino')
+
+# Read data
+data = arduino.readline().decode('utf-8')
+print(data)
+
+arduino.close()
+```
+
+## Hardware Components
+
+Common components used in Grupo de Anda projects:
+
+<Accordion title="Microcontrollers">
+  - **Arduino Uno**: Beginner-friendly, 5V logic
+  - **Arduino Nano**: Compact version of Uno
+  - **Arduino Mega**: More pins and memory
+  - **ESP32**: WiFi/Bluetooth, 3.3V logic
+  - **Raspberry Pi**: Full Linux computer, GPIO pins
+</Accordion>
+
+<Accordion title="Sensors">
+  - Temperature sensors (DHT11, DHT22, DS18B20)
+  - Motion sensors (PIR, ultrasonic)
+  - Light sensors (LDR, photodiode)
+  - Accelerometers and gyroscopes (MPU6050)
+  - GPS modules
+</Accordion>
+
+<Accordion title="Actuators">
+  - Servo motors
+  - DC motors with drivers (L298N, L293D)
+  - Stepper motors
+  - Relays for high-voltage switching
+  - LEDs and LED strips (WS2812B)
+</Accordion>
+
+<Accordion title="Communication Modules">
+  - Bluetooth (HC-05, HC-06)
+  - WiFi (built-in on ESP32)
+  - RF modules (NRF24L01)
+  - LoRa for long-range communication
+</Accordion>
+
+## Uploading Code to Arduino
+
+<Steps>
+  <Step title="Open Your Sketch">
+    Open the `.ino` file from the hardware project folder in Arduino IDE.
+  </Step>
+
+  <Step title="Install Required Libraries">
+    Check the comments at the top of the sketch for required libraries and install them via Library Manager.
+  </Step>
+
+  <Step title="Configure Board and Port">
+    - **Tools** → **Board**: Select your board
+    - **Tools** → **Port**: Select the correct port
+  </Step>
+
+  <Step title="Compile and Upload">
+    1. Click **Verify** (✓) to check for errors
+    2. Click **Upload** (→) to flash the code to your board
+    3. Wait for "Done uploading" message
+  </Step>
+
+  <Step title="Monitor Serial Output">
+    Open the Serial Monitor (**Tools** → **Serial Monitor**) to see debug output:
+    - Set baud rate to match your sketch (usually 9600 or 115200)
+    - View sensor data, debug messages, etc.
+  </Step>
+</Steps>
+
+## Platform-Specific Notes
+
+### Ubuntu/Linux
+
+<Warning>
+**Serial Port Permissions**: You must add your user to the `dialout` group to access serial ports:
+```bash
+sudo usermod -a -G dialout $USER
+```
+Log out and back in for this to take effect.
+</Warning>
+
+**CH340 Driver** (for some Arduino clones):
+```bash
+sudo apt install linux-headers-$(uname -r)
+```
+
+The driver is usually included in modern kernels.
+
+### Windows
+
+- Drivers usually install automatically
+- For CH340 chips, download from manufacturer if needed
+- May need to disable driver signature enforcement for some boards
+
+### macOS
+
+- Install CP210x or CH340 drivers from manufacturer websites
+- May need to approve drivers in System Preferences → Security & Privacy
+
+## Troubleshooting
+
+<Accordion title="Port not detected">
+  **Check USB connection**: Try a different cable or port
+  
+  **Install drivers**:
+  - Windows: Usually automatic, or download from Arduino.cc
+  - Linux: Add to dialout group and install kernel headers
+  - macOS: Install manufacturer drivers
+  
+  **Restart Arduino IDE** after connecting the board
+</Accordion>
+
+<Accordion title="Upload failed or timed out">
+  - **Wrong board selected**: Check Tools → Board
+  - **Wrong port**: Check Tools → Port
+  - **Board not in bootloader mode**: Some boards require reset during upload
+  - **Sketch too large**: Use a board with more memory or optimize code
+</Accordion>
+
+<Accordion title="Permission denied on Linux">
+  Add your user to the dialout group:
+  ```bash
+  sudo usermod -a -G dialout $USER
+  ```
+  
+  Log out and back in, or run:
+  ```bash
+  newgrp dialout
+  ```
+</Accordion>
+
+<Accordion title="ESP32 upload fails">
+  - Hold the **BOOT** button while uploading
+  - Check that ESP32 board package is installed
+  - Try lower upload speed: Tools → Upload Speed → 115200
+  - Use high-quality USB cable (data + power, not just power)
+</Accordion>
+
+<Accordion title="Library not found">
+  Install via Library Manager (Tools → Manage Libraries)
+  
+  Or manually:
+  1. Download the library ZIP
+  2. Sketch → Include Library → Add .ZIP Library
+  3. Select the downloaded ZIP file
+</Accordion>
+
+## Circuit Design and Prototyping
+
+### Tools for Circuit Design
+
+- **Fritzing**: Visual circuit designer (breadboard view)
+- **TinkerCAD Circuits**: Online Arduino simulator
+- **KiCad**: Professional PCB design (free)
+- **EasyEDA**: Online PCB design
+
+### Safety Notes
+
+<Warning>
+- Never connect 5V directly to 3.3V pins (ESP32, Raspberry Pi)
+- Use current-limiting resistors for LEDs
+- Use proper power supplies for motors (don't power from Arduino)
+- Double-check polarity of electrolytic capacitors and diodes
+- Disconnect power when wiring circuits
+</Warning>
+
+## Next Steps
+
+With Arduino IDE set up:
+
+1. Explore hardware projects in the repository
+2. Read project-specific READMEs for component lists
+3. Check circuit diagrams before wiring
+4. Test with simple examples before complex projects
+5. Integrate with Python software for complete systems
+
+## Additional Resources
+
+### Documentation Folders
+
+Hardware projects include:
+- Circuit diagrams and schematics
+- Component guides
+- Example code with good practices
+- Integration examples with Python
+
+### Learning Resources
+
+- [Arduino Official Tutorials](https://www.arduino.cc/en/Tutorial/HomePage)
+- [ESP32 Documentation](https://docs.espressif.com/projects/arduino-esp32/)
+- [Raspberry Pi GPIO Guide](https://www.raspberrypi.com/documentation/computers/raspberry-pi.html)
+
+<Info>
+The Grupo de Anda repository demonstrates best practices in data handling and system integration. Review the code to learn secure and efficient hardware-software communication.
+</Info>
