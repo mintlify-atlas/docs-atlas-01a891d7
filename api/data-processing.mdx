@@ -887,3 +887,142 @@ print(processed)  # "abre netflix por favor"
     ```
   </Accordion>
 </AccordionGroup>
+
+---
+
+## Data Normalization
+
+### DataNormalizer Class
+
+Transform multiple data formats into standardized text for model training.
+
+**Source**: `~/workspace/source/proyectos/ai creator/kamutini/info.py`
+
+```python Class Definition
+import json
+import os
+
+class DataNormalizer:
+    """
+    Transform JSON/CSV data into standardized training format.
+    Supports multiple input schemas.
+    """
+    def __init__(self, eos_token="<|endoftext|>"):
+        self.eos_token = eos_token
+```
+
+<ParamField path="eos_token" type="string" default="<|endoftext|>">
+  End-of-sequence token appended to normalized text
+</ParamField>
+
+### normalize_entry()
+
+Convert a data entry to standard format.
+
+```python Method Signature
+def normalize_entry(self, data: dict) -> str:
+    """
+    Detect input format and convert to:
+    "### Humano: <question>### Asistente: <answer>"
+    
+    Returns:
+        Normalized text string with EOS token
+    """
+```
+
+**Supported Formats**:
+
+<Tabs>
+  <Tab title="Pre-formatted Text">
+    ```json
+    {
+      "text": "### Humano: ¿Cómo estás?### Asistente: Bien, gracias."
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Question/Answer">
+    ```json
+    {
+      "idx": 60,
+      "question": "¿Qué pasatiempos tienes?",
+      "answer": "Senderismo en montañas.",
+      "label": "Hobbies"
+    }
+    ```
+    
+    Transforms to: `"### Humano: ¿Qué pasatiempos tienes?### Asistente: Senderismo en montañas. <|endoftext|>"`
+  </Tab>
+  
+  <Tab title="Prompt/Completion">
+    ```json
+    {
+      "prompt": "What's the weather?",
+      "completion": "It's sunny today."
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### load_specific_datasets()
+
+Load and normalize multiple dataset files.
+
+```python Usage Example
+normalizer = DataNormalizer()
+
+# Load specific files
+file_paths = [
+    "datasets/conversations.json",
+    "datasets/qa_pairs.json"
+]
+
+normalized_text = normalizer.load_specific_datasets(file_paths)
+print(f"Loaded {len(normalized_text.split(normalizer.eos_token))} examples")
+```
+
+<ParamField path="file_paths" type="list[str]">
+  List of JSON file paths to process
+</ParamField>
+
+**Returns**: Combined normalized text with entries separated by `\n\n`
+
+<Note>
+The normalizer handles both single JSON objects and arrays, as well as JSONL format (one JSON object per line).
+</Note>
+
+### Integration with Model Training
+
+Used by the PyTorch model trainer to prepare datasets.
+
+```python Integration Example
+from info import DataNormalizer
+
+class LocalOptimizedDataset(Dataset):
+    def __init__(self, directory_path, block_size):
+        # Initialize normalizer
+        self.normalizer = DataNormalizer(eos_token="<|endoftext|>")
+        
+        formatted_lines = []
+        files = [f for f in os.listdir(directory_path) 
+                if f.endswith(('.json', '.csv'))]
+        
+        for filename in files:
+            filepath = os.path.join(directory_path, filename)
+            with open(filepath, 'r', encoding='utf-8') as f:
+                raw_data = json.load(f)
+                if not isinstance(raw_data, list):
+                    raw_data = [raw_data]
+                
+                for item in raw_data:
+                    norm_text = self.normalizer.normalize_entry(item)
+                    if norm_text:
+                        formatted_lines.append(norm_text)
+        
+        text_data = "\n\n".join(formatted_lines)
+        # Continue with tokenization...
+```
+
+<Tip>
+Use DataNormalizer when training models on heterogeneous datasets with different JSON schemas. It standardizes the format automatically.
+</Tip>

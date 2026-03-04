@@ -690,3 +690,220 @@ print(results)
     - Use mono audio for efficiency
   </Card>
 </CardGroup>
+
+---
+
+## PyTorch Language Model
+
+### Overview
+
+Custom GPT-style language model trainer with device auto-detection and dataset normalization.
+
+**Source**: `~/workspace/source/proyectos/ai creator/kamutini/modelo.py`
+
+```python Configuration
+CONFIG = {
+    "model_path": "modelo_ia_ligero.pth",
+    "dataset_dir": "kamutini/datasets",
+    "batch_size": 16,        
+    "block_size": 256,       # Context window
+    "n_embd": 512,           # Embedding dimension
+    "n_head": 8,             # Attention heads
+    "n_layer": 8,            # Transformer layers
+    "dropout": 0.1,          
+    "learning_rate": 5e-4,   
+    "max_steps": 2000,       
+    "temperature": 0.7,      # Generation randomness
+    "top_k": 50,             # Top-k sampling
+    "max_new_tokens": 500,   # Max generation length
+    "eos_token": "<|endoftext|>"
+}
+```
+
+### Device Auto-Detection
+
+Automatically selects the best available device.
+
+```python get_best_device()
+def get_best_device():
+    """
+    Returns:
+        "cuda" if NVIDIA GPU available
+        "mps" if Apple Silicon GPU available
+        "cpu" otherwise
+    """
+    if torch.cuda.is_available():
+        return "cuda"
+    elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    else:
+        return "cpu"
+
+DEVICE = get_best_device()
+```
+
+<Info>
+The model automatically optimizes thread count for CPU training: `torch.set_num_threads(os.cpu_count())`
+</Info>
+
+### LocalOptimizedDataset
+
+Custom PyTorch Dataset that uses DataNormalizer to load multiple JSON/CSV files.
+
+```python Dataset Class
+class LocalOptimizedDataset(Dataset):
+    def __init__(self, directory_path, block_size, simple_load=False, chars_fixed=None):
+        # Initialize DataNormalizer
+        self.normalizer = info.DataNormalizer(eos_token=CONFIG['eos_token'])
+        
+        formatted_lines = []
+        files = [f for f in os.listdir(directory_path) 
+                if f.endswith(('.json', '.csv'))]
+        
+        print(f"Loading and normalizing {len(files)} files...")
+        
+        for filename in files:
+            # Process JSON files
+            if filename.endswith('.json'):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    raw_data = json.load(f)
+                    if not isinstance(raw_data, list):
+                        raw_data = [raw_data]
+                    
+                    for item in raw_data:
+                        norm_text = self.normalizer.normalize_entry(item)
+                        if norm_text:
+                            formatted_lines.append(norm_text)
+            
+            # Process CSV files
+            elif filename.endswith('.csv'):
+                df = pd.read_csv(filepath)
+                for item in df.to_dict('records'):
+                    norm_text = self.normalizer.normalize_entry(item)
+                    if norm_text:
+                        formatted_lines.append(norm_text)
+        
+        text_data = "\n\n".join(formatted_lines)
+        # Tokenization follows...
+```
+
+<ParamField path="directory_path" type="str" required>
+  Path to directory containing JSON/CSV training files
+</ParamField>
+
+<ParamField path="block_size" type="int" required>
+  Context window size (tokens per training sample)
+</ParamField>
+
+<ParamField path="simple_load" type="bool" default="False">
+  Skip advanced preprocessing if True
+</ParamField>
+
+<ParamField path="chars_fixed" type="list" optional>
+  Pre-defined character vocabulary (auto-detected if None)
+</ParamField>
+
+### Model Architecture
+
+Transformer-based decoder with configurable depth.
+
+<Accordion title="Architecture Details">
+- **Embedding**: Token and position embeddings (512-dim)
+- **Transformer Blocks**: 8 layers with multi-head attention (8 heads)
+- **Dropout**: 0.1 for regularization
+- **Output**: Linear layer to vocabulary size
+- **Parameters**: ~50M depending on vocabulary size
+</Accordion>
+
+### Training Pipeline
+
+```python Training Example
+# Load dataset
+dataset = LocalOptimizedDataset(
+    directory_path="kamutini/datasets",
+    block_size=CONFIG['block_size']
+)
+
+# Create data loader
+loader = DataLoader(
+    dataset,
+    batch_size=CONFIG['batch_size'],
+    shuffle=True
+)
+
+# Train for specified steps
+for step in range(CONFIG['max_steps']):
+    x, y = next(iter(loader))
+    x, y = x.to(DEVICE), y.to(DEVICE)
+    
+    logits, loss = model(x, y)
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+    
+    if step % 100 == 0:
+        print(f"Step {step}: Loss = {loss.item():.4f}")
+
+# Save model
+torch.save(model.state_dict(), CONFIG['model_path'])
+```
+
+### Text Generation
+
+```python Generation Example
+def generate_text(model, prompt, max_tokens=500, temperature=0.7, top_k=50):
+    """
+    Generate text continuation from a prompt.
+    
+    Args:
+        prompt: Starting text
+        max_tokens: Maximum tokens to generate
+        temperature: Randomness (0.0 = deterministic, 1.0 = creative)
+        top_k: Sample from top-k most likely tokens
+    
+    Returns:
+        Generated text string
+    """
+    model.eval()
+    with torch.no_grad():
+        # Encode prompt
+        tokens = encode(prompt)
+        x = torch.tensor([tokens], dtype=torch.long).to(DEVICE)
+        
+        # Generate
+        for _ in range(max_tokens):
+            logits = model(x)
+            logits = logits[:, -1, :] / temperature
+            
+            # Top-k filtering
+            if top_k > 0:
+                v, _ = torch.topk(logits, top_k)
+                logits[logits < v[:, [-1]]] = -float('Inf')
+            
+            probs = F.softmax(logits, dim=-1)
+            next_token = torch.multinomial(probs, num_samples=1)
+            x = torch.cat([x, next_token], dim=1)
+            
+            # Check for EOS
+            if decode([next_token.item()]) == CONFIG['eos_token']:
+                break
+        
+        return decode(x[0].tolist())
+
+# Usage
+response = generate_text(
+    model,
+    prompt="### Humano: ¿Cómo estás?### Asistente:",
+    temperature=0.7,
+    top_k=50
+)
+print(response)
+```
+
+<Warning>
+Model training requires significant RAM (4GB+) and benefits greatly from GPU acceleration. Training on CPU is possible but slow (hours vs minutes).
+</Warning>
+
+<Tip>
+For faster iteration, start with `max_steps=500` and `n_layer=4` to validate your dataset, then scale up to full configuration.
+</Tip>
