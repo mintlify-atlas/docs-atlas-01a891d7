@@ -1,0 +1,81 @@
+{
+  "projectType": "general",
+  "projectName": "Grupo de Anda",
+  "projectDescription": "Educational open-source repository containing Python AI/ML projects, web applications, and Arduino hardware prototypes.",
+  "theme": "almond",
+  "primaryColor": "#dedede",
+  "lightColor": "#fbde58",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Software Projects",
+            "pages": [
+              "software/ai-assistant",
+              "software/wake-word-detection",
+              "software/intent-classification",
+              "software/mipos-system",
+              "software/web-projects"
+            ]
+          },
+          {
+            "group": "Hardware Projects",
+            "pages": [
+              "hardware/overview",
+              "hardware/arduino-projects",
+              "hardware/duende-servo"
+            ]
+          },
+          {
+            "group": "Development Guides",
+            "pages": [
+              "guides/python-setup",
+              "guides/virtual-environments",
+              "guides/dependencies",
+              "guides/arduino-setup"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Python Modules",
+            "pages": [
+              "api/ai-models",
+              "api/data-processing",
+              "api/utilities"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI voice assistant with Gemini integration",
+    "Wake word detection using LSTM models",
+    "Intent classification with sklearn",
+    "Point of sale (POS) system with inventory management",
+    "Arduino servo control projects",
+    "Web interfaces and applications"
+  ],
+  "publicApiSurface": [
+    "asistantkamutini.py - Voice assistant with Roku control",
+    "entrenar_wake.py - Wake word model training",
+    "modelo.py - Intent classification training",
+    "inicio.py - miPOS system entry point",
+    "inventario.py - Inventory management module",
+    "codigo.ino - Arduino servo controller"
+  ]
+}
